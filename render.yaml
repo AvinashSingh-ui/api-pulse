@@ -1,0 +1,36 @@
+services:
+  # ── Backend Web Service ──────────────────────────────
+  - type: web
+    name: api-pulse-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: JWT_SECRET
+        generateValue: true
+
+  # ── Frontend Static Site ─────────────────────────────
+  - type: web
+    name: api-pulse-frontend
+    env: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: api-pulse-backend
+          property: url
+
