@@ -172,7 +172,7 @@ export default function LogsPage() {
     <div>
       <PageHeader
         title="Request Logs"
-        subtitle="Real-time API request & response logs stored in database"
+        subtitle="Real-time API request and response telemetry logs"
         actions={
           <Space>
             <Button icon={<ReloadOutlined />} onClick={fetchLogs} loading={loading}>
@@ -292,7 +292,7 @@ export default function LogsPage() {
               setPage(p);
               setPageSize(ps);
             },
-            showTotal: (t) => `${t} requests in database`,
+            showTotal: (t) => `${t} total requests`,
           }}
           scroll={{ x: 900 }}
           style={{ background: '#fff', borderRadius: 12 }}

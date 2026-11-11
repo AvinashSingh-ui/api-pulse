@@ -48,7 +48,7 @@ export default function EndpointsPage() {
       setEndpoints(epsRes.data || []);
       setProjects(projsRes.data || []);
     } catch {
-      message.error('Failed to load endpoints from database');
+      message.error('Failed to load endpoints');
     } finally {
       setIsLoading(false);
     }
@@ -78,7 +78,7 @@ export default function EndpointsPage() {
       setEndpoints(prev => [created, ...prev]);
       setIsModalOpen(false);
       form.resetFields();
-      message.success(`Endpoint "${created.method} ${created.path}" registered in database!`);
+      message.success(`Endpoint "${created.method} ${created.path}" created successfully!`);
     } catch (err: any) {
       if (err.errorFields) return;
       message.error(err.message || 'Failed to create endpoint');
@@ -128,7 +128,7 @@ export default function EndpointsPage() {
     try {
       await endpointsService.delete(id);
       setEndpoints(prev => prev.filter(e => e.id !== id));
-      message.success(`Endpoint "${name}" removed from database.`);
+      message.success(`Endpoint "${name}" removed successfully.`);
     } catch {
       message.error('Failed to delete endpoint');
     }
@@ -225,7 +225,7 @@ export default function EndpointsPage() {
           <Tooltip title="Delete endpoint">
             <Popconfirm
               title="Delete endpoint?"
-              description={`Delete ${r.method} ${r.path} from database?`}
+              description={`Delete ${r.method} ${r.path}?`}
               okText="Delete"
               okButtonProps={{ danger: true }}
               onConfirm={() => handleDelete(r.id, r.name)}
@@ -313,7 +313,7 @@ export default function EndpointsPage() {
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
           <Spin size="large" />
-          <div style={{ marginTop: 12, color: '#64748b' }}>Loading endpoints from database...</div>
+          <div style={{ marginTop: 12, color: '#64748b' }}>Loading endpoints...</div>
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState

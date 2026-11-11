@@ -116,7 +116,7 @@ export default function ProjectDetailPage() {
       }
       setIsModalOpen(false);
       form.resetFields();
-      message.success(`Endpoint "${created.method} ${created.path}" registered in database!`);
+      message.success(`Endpoint "${created.method} ${created.path}" created successfully!`);
     } catch (err: any) {
       if (err.errorFields) return;
       message.error(err.message || 'Failed to create endpoint');
@@ -169,7 +169,7 @@ export default function ProjectDetailPage() {
       if (project) {
         setProject({ ...project, endpointCount: Math.max(0, project.endpointCount - 1) });
       }
-      message.success(`Endpoint "${name}" removed from database.`);
+      message.success(`Endpoint "${name}" removed successfully.`);
     } catch {
       message.error('Failed to delete endpoint');
     }
@@ -190,7 +190,7 @@ export default function ProjectDetailPage() {
       const values = await settingsForm.validateFields();
       const updated = await projectsService.update(projectId, values);
       setProject(updated);
-      message.success('Project settings updated in database!');
+      message.success('Project settings updated successfully!');
     } catch {
       message.error('Failed to update settings');
     }
@@ -200,7 +200,7 @@ export default function ProjectDetailPage() {
     return (
       <div style={{ textAlign: 'center', padding: '80px 0' }}>
         <Spin size="large" />
-        <div style={{ marginTop: 12, color: '#64748b' }}>Loading project data from database...</div>
+        <div style={{ marginTop: 12, color: '#64748b' }}>Loading project details...</div>
       </div>
     );
   }
@@ -209,7 +209,7 @@ export default function ProjectDetailPage() {
     return (
       <EmptyState
         title="Project Not Found"
-        description="The requested project was not found in the database or has been deleted."
+        description="The requested project was not found or has been removed."
         action={<Button type="primary" onClick={() => navigate('/projects')}>Back to Projects</Button>}
       />
     );

@@ -45,7 +45,7 @@ export default function LoginPage() {
     }));
 
     if (registerThunk.fulfilled.match(result)) {
-      message.success('Account successfully registered in Database!');
+      message.success('Account created successfully! Please sign in.');
       setSuccessMsg(`Account for "${values.email}" created! Please enter your password to sign in.`);
       // Auto pre-fill login form and switch to login tab
       loginForm.setFieldsValue({ email: values.email });
@@ -120,14 +120,14 @@ export default function LoginPage() {
           marginBottom: isTablet ? 20 : 40,
           maxWidth: 440,
         }}>
-          Real-time monitoring, AI-powered anomaly detection, and instant alerts — all stored in your production database.
+          Real-time monitoring, AI-powered anomaly detection, and instant incident resolution across your infrastructure.
         </p>
 
         {!isMobile && (
           [
             'Real-time uptime & performance tracking',
             'AI-driven root cause analysis with confidence levels',
-            'PostgreSQL & SQLite relational database storage',
+            'Automated uptime & anomaly detection engine',
             'Automated assertion testing and instant pings',
           ].map((feature, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -159,7 +159,7 @@ export default function LoginPage() {
           <p style={{ color: '#64748b', fontSize: 14 }}>
             {activeTab === 'login'
               ? 'Enter your registered credentials to access the monitoring console'
-              : 'Register your details to save your user record into the database'}
+              : 'Enter your details to create your API Pulse workspace'}
           </p>
         </div>
 
@@ -356,7 +356,7 @@ export default function LoginPage() {
                 block
                 style={{ height: 44, borderRadius: 8, fontSize: 15, fontWeight: 600, background: '#22c55e', borderColor: '#22c55e' }}
               >
-                Register & Save to Database
+                Create Account
               </Button>
             </Form.Item>
 
@@ -383,8 +383,8 @@ export default function LoginPage() {
           justifyContent: 'center',
           gap: 6,
         }}>
-          <SafetyOutlined style={{ color: '#22c55e' }} />
-          <span>Real-time authentication with SQL database storage & bcrypt encryption</span>
+          <SafetyOutlined style={{ color: '#4f8ef7' }} />
+          <span>Enterprise-grade security with 256-bit encryption & token authentication</span>
         </div>
       </div>
     </div>

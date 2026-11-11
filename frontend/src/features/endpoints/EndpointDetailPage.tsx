@@ -192,7 +192,7 @@ export default function EndpointDetailPage() {
     return (
       <div style={{ textAlign: 'center', padding: '80px 0' }}>
         <Spin size="large" />
-        <div style={{ marginTop: 12, color: '#64748b' }}>Loading endpoint from database...</div>
+        <div style={{ marginTop: 12, color: '#64748b' }}>Loading endpoint details...</div>
       </div>
     );
   }
@@ -201,7 +201,7 @@ export default function EndpointDetailPage() {
     return (
       <EmptyState
         title="Endpoint Not Found"
-        description="The requested endpoint does not exist in the database or has been deleted."
+        description="The requested endpoint does not exist or has been removed."
         action={<Button type="primary" onClick={() => navigate('/endpoints')}>Back to Endpoints</Button>}
       />
     );

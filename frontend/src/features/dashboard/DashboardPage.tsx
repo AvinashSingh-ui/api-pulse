@@ -186,7 +186,7 @@ export default function DashboardPage() {
       {!loading && totalProjects === 0 && (
         <AntAlert
           message="Welcome to API Pulse"
-          description="Your real-time SQL database is connected and ready. You don't have any projects or endpoints yet. Create your first project to start monitoring real-time API health, latency, logs, and alerts."
+          description="All monitoring engines are online. You don't have any projects yet. Create your first project to begin tracking real-time API telemetry, latency, and automated alerts."
           type="info"
           showIcon
           action={

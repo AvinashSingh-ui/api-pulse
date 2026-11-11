@@ -63,7 +63,7 @@ export default function ProjectsPage() {
       setProjects(prev => [created, ...prev]);
       setIsModalOpen(false);
       form.resetFields();
-      message.success(`Project "${created.name}" created and saved to database!`);
+      message.success(`Project "${created.name}" created successfully!`);
     } catch (err: any) {
       if (err.errorFields) return;
       message.error(err.message || 'Failed to create project');
@@ -76,7 +76,7 @@ export default function ProjectsPage() {
     try {
       await projectsService.delete(id);
       setProjects(prev => prev.filter(p => p.id !== id));
-      message.success(`Project "${name}" removed from database.`);
+      message.success(`Project "${name}" removed successfully.`);
     } catch {
       message.error('Failed to delete project');
     }
@@ -148,11 +148,11 @@ export default function ProjectsPage() {
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: '60px 0' }}>
           <Spin size="large" />
-          <div style={{ marginTop: 12, color: '#64748b' }}>Loading projects from database...</div>
+          <div style={{ marginTop: 12, color: '#64748b' }}>Loading projects...</div>
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          title="No Projects in Database"
+          title="No Projects Yet"
           description={search ? 'No projects match your search filter.' : 'You have not registered any projects yet. Click below to add your first real API project.'}
           action={
             <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
@@ -188,7 +188,7 @@ export default function ProjectsPage() {
                     </Tooltip>
                     <Popconfirm
                       title="Delete Project?"
-                      description="All associated endpoints and logs in the database will be permanently removed."
+                      description="All associated endpoints and logs will be permanently removed."
                       okText="Delete"
                       okButtonProps={{ danger: true }}
                       onConfirm={() => handleDelete(project.id, project.name)}
