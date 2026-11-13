@@ -6,10 +6,13 @@ import {
 import {
   UserOutlined, BellOutlined, KeyOutlined, TeamOutlined,
   CopyOutlined, DeleteOutlined, PlusOutlined,
-  EyeOutlined, EyeInvisibleOutlined,
+  EyeOutlined, EyeInvisibleOutlined, SoundOutlined,
+  CheckCircleOutlined, ExclamationCircleOutlined, AlertOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
-import { useAppSelector } from '@/app/hooks';
+import { useAppSelector, useAppDispatch } from '@/app/hooks';
+import { setPreferences } from '@/features/notifications/notificationsSlice';
+import { playNotificationSound } from '@/utils/audio';
 import { formatDate } from '@/utils';
 import type { ColumnsType } from 'antd/es/table';
 
@@ -161,52 +164,181 @@ const ProfileTab: React.FC = () => {
 // ---------------------------------------------------------------------------
 // Notifications Tab
 // ---------------------------------------------------------------------------
-const NotificationsTab: React.FC = () => (
-  <Card style={{ borderRadius: 12, maxWidth: 600 }}>
-    <h3 style={{ marginBottom: 16, fontSize: 15 }}>Notification Preferences</h3>
-    {NOTIFICATION_EVENTS.map(n => (
-      <div
-        key={n.key}
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '14px 0',
-          borderBottom: '1px solid #f1f5f9',
-        }}
-      >
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>
-            {n.label}
+const NotificationsTab: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const prefs = useAppSelector(s => s.notifications.preferences);
+
+  const handleSoundTest = (type: 'critical' | 'warning' | 'success') => {
+    playNotificationSound(type);
+    const label = type === 'critical' ? 'Urgent alarm' : type === 'warning' ? 'Degraded chime' : 'Recovery chord';
+    message.info(`Played ${label} test sound`);
+  };
+
+  return (
+    <div style={{ maxWidth: 720 }}>
+      {/* Sound Alerts & Audio Synthesizer */}
+      <Card
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <SoundOutlined style={{ color: '#0958d9' }} />
+            <span>Audio Notification & Alert Sound System</span>
           </div>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-            {n.description}
+        }
+        style={{ borderRadius: 12, marginBottom: 20 }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>Enable Sound Alerts</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Master switch to play audible tones when critical incidents, degradations, or recoveries occur.
+            </div>
+          </div>
+          <Switch
+            checked={prefs.soundEnabled}
+            onChange={(checked) => dispatch(setPreferences({ soundEnabled: checked }))}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+          <div>
+            <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>Critical Alert Tone (Unhealthy / Unavailable APIs)</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Urgent dual-tone alarm triggered on endpoint failures, 5xx outages, and downtime.
+            </div>
+          </div>
+          <Switch
+            checked={prefs.soundOnCritical}
+            disabled={!prefs.soundEnabled}
+            onChange={(checked) => dispatch(setPreferences({ soundOnCritical: checked }))}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+          <div>
+            <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>Warning Chime (Degraded Performance / Latency Spikes)</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Gentle chime when an endpoint exceeds configured latency threshold or experiences degradation.
+            </div>
+          </div>
+          <Switch
+            checked={prefs.soundOnWarning}
+            disabled={!prefs.soundEnabled}
+            onChange={(checked) => dispatch(setPreferences({ soundOnWarning: checked }))}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+          <div>
+            <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>Recovery Tone (API Returned to Healthy)</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Ascending harmonic chord played when a degraded or unhealthy API fully recovers.
+            </div>
+          </div>
+          <Switch
+            checked={prefs.soundOnRecovery}
+            disabled={!prefs.soundEnabled}
+            onChange={(checked) => dispatch(setPreferences({ soundOnRecovery: checked }))}
+          />
+        </div>
+
+        {/* Audio Test Controls */}
+        <div style={{ marginTop: 20, padding: 14, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 10 }}>
+            Test Synthesizer Sounds (Web Audio API)
+          </div>
+          <Space wrap>
+            <Button
+              size="small"
+              danger
+              icon={<AlertOutlined />}
+              onClick={() => handleSoundTest('critical')}
+            >
+              Test Urgent Sound (Critical)
+            </Button>
+            <Button
+              size="small"
+              style={{ color: '#d97706', borderColor: '#d97706' }}
+              icon={<ExclamationCircleOutlined />}
+              onClick={() => handleSoundTest('warning')}
+            >
+              Test Degraded Chime (Warning)
+            </Button>
+            <Button
+              size="small"
+              style={{ color: '#16a34a', borderColor: '#16a34a' }}
+              icon={<CheckCircleOutlined />}
+              onClick={() => handleSoundTest('success')}
+            >
+              Test Recovery Chord (Success)
+            </Button>
+          </Space>
+        </div>
+      </Card>
+
+      {/* In-App Alerts & Notifications */}
+      <Card
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <BellOutlined style={{ color: '#0958d9' }} />
+            <span>In-App Alert Notifications</span>
+          </div>
+        }
+        style={{ borderRadius: 12, marginBottom: 20 }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
+          <div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>Display Floating Toast Notifications</div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Show Ant Design alert notifications on the top-right screen when API health transitions occur.
+            </div>
+          </div>
+          <Switch
+            checked={prefs.inAppAlertsEnabled}
+            onChange={(checked) => dispatch(setPreferences({ inAppAlertsEnabled: checked }))}
+          />
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <h4 style={{ fontSize: 13, fontWeight: 600, color: '#475569', marginBottom: 10 }}>
+            Intelligent Deduplication & Health Transition Rules
+          </h4>
+          <div style={{ fontSize: 12, color: '#64748b', lineHeight: 1.6, background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+            <div>• <b>Ongoing Incident Deduplication:</b> API Pulse suppresses repetitive alerts for the same continuous incident within a 15-minute sliding window to prevent notification flood.</div>
+            <div style={{ marginTop: 4 }}>• <b>Degradation Thresholds:</b> Triggered when response time exceeds endpoint threshold (default 500ms) or when high error rates occur.</div>
+            <div style={{ marginTop: 4 }}>• <b>Automatic Recovery:</b> When an endpoint returns HTTP 2xx and normal latency, active alerts auto-resolve and a recovery notification is generated.</div>
           </div>
         </div>
-        <Switch defaultChecked={n.defaultChecked} />
-      </div>
-    ))}
+      </Card>
 
-    <Divider />
-
-    <h3 style={{ marginBottom: 16, fontSize: 15 }}>Notification Channels</h3>
-    {NOTIFICATION_CHANNELS.map(c => (
-      <div
-        key={c.key}
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '12px 0',
-          borderBottom: '1px solid #f1f5f9',
-        }}
+      {/* External Channels */}
+      <Card
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <TeamOutlined style={{ color: '#0958d9' }} />
+            <span>Notification Channels</span>
+          </div>
+        }
+        style={{ borderRadius: 12 }}
       >
-        <span style={{ fontWeight: 500, fontSize: 14 }}>{c.label}</span>
-        <Switch defaultChecked={c.defaultChecked} />
-      </div>
-    ))}
-  </Card>
-);
+        {NOTIFICATION_CHANNELS.map(c => (
+          <div
+            key={c.key}
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '12px 0',
+              borderBottom: '1px solid #f1f5f9',
+            }}
+          >
+            <span style={{ fontWeight: 500, fontSize: 14 }}>{c.label}</span>
+            <Switch defaultChecked={c.defaultChecked} />
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------------------
 // API Keys Tab

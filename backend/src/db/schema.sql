@@ -127,10 +127,26 @@ CREATE TABLE IF NOT EXISTS ai_insights (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 8. Notifications Table
+CREATE TABLE IF NOT EXISTS notifications (
+  id VARCHAR(64) PRIMARY KEY,
+  project_id VARCHAR(64) REFERENCES projects(id) ON DELETE CASCADE,
+  endpoint_id VARCHAR(64) REFERENCES endpoints(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  severity VARCHAR(32) DEFAULT 'warning',
+  type VARCHAR(32) DEFAULT 'degraded',
+  is_read BOOLEAN DEFAULT FALSE,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Optimized Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_endpoints_project ON endpoints(project_id);
 CREATE INDEX IF NOT EXISTS idx_logs_endpoint ON request_logs(endpoint_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_logs_status ON request_logs(status_code);
 CREATE INDEX IF NOT EXISTS idx_alerts_project_status ON alerts(project_id, status);
 CREATE INDEX IF NOT EXISTS idx_alert_rules_project ON alert_rules(project_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_endpoint ON notifications(endpoint_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
 

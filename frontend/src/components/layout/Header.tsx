@@ -1,7 +1,7 @@
 import React from 'react';
-import { Layout, Space, Avatar, Dropdown, Badge, Button, Input } from 'antd';
+import { Layout, Space, Avatar, Dropdown, Button, Input } from 'antd';
 import {
-  BellOutlined, SearchOutlined, LogoutOutlined,
+  SearchOutlined, LogoutOutlined,
   UserOutlined, SettingOutlined, MenuOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +9,7 @@ import { useAppSelector, useAppDispatch } from '@/app/hooks';
 import { logoutThunk } from '@/features/auth/authSlice';
 import { toggleMobileDrawer } from '@/features/ui/uiSlice';
 import { useResponsive } from '@/hooks/useResponsive';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import type { MenuProps } from 'antd';
 
 const { Header: AntHeader } = Layout;
@@ -19,7 +20,6 @@ export const Header: React.FC = () => {
   const { isMobile } = useResponsive();
   const user         = useAppSelector(s => s.auth.user);
   const collapsed    = useAppSelector(s => s.ui.sidebarCollapsed);
-  const activeAlerts = useAppSelector(s => s.alerts.activeCount);
 
   const handleLogout = async () => {
     await dispatch(logoutThunk());
@@ -89,15 +89,8 @@ export const Header: React.FC = () => {
 
       {/* Right side: Alerts + Profile */}
       <Space size={isMobile ? 6 : 12}>
-        {/* Alerts bell */}
-        <Badge count={activeAlerts} size="small">
-          <Button
-            type="text"
-            icon={<BellOutlined style={{ fontSize: 18 }} />}
-            onClick={() => navigate('/alerts')}
-            style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          />
-        </Badge>
+        {/* Intelligent Notification Center */}
+        <NotificationCenter />
 
         {/* User menu */}
         <Dropdown menu={{ items: userMenuItems }} trigger={['click']} placement="bottomRight">

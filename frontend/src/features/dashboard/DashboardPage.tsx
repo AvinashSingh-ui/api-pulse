@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Tag, Button, Empty, Space } from 'antd';
+import { Row, Col, Card, Table, Tag, Button, Empty, Space, Tabs, Badge } from 'antd';
 import {
   FolderOutlined, ApiOutlined, RiseOutlined, ThunderboltOutlined,
   BellOutlined, BarChartOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
-  PlusOutlined, HistoryOutlined, SafetyCertificateOutlined,
+  CloseCircleOutlined, PlusOutlined, HistoryOutlined, SafetyCertificateOutlined,
+  AlertOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader }              from '@/components/common/PageHeader';
@@ -17,7 +18,8 @@ import { formatResponseTime, formatNumber, fromNow } from '@/utils';
 import { monitoringService }       from '@/services/endpoints/monitoring';
 import { alertsService }           from '@/services/endpoints/alerts';
 import { endpointsService }        from '@/services/endpoints/endpoints';
-import type { Alert, Endpoint, MetricPoint, DashboardStats } from '@/types';
+import { useGetNotificationsQuery } from '@/services/apiSlice';
+import type { Alert, Endpoint, MetricPoint, DashboardStats, AppNotification } from '@/types';
 
 /**
  * DashboardPage:
@@ -79,6 +81,7 @@ export default function DashboardPage() {
   const healthyEndpoints = stats?.healthyEndpoints ?? 0;
   const degradedEndpoints = stats?.degradedEndpoints ?? 0;
   const downEndpoints = stats?.downEndpoints ?? 0;
+  const recoveredEndpoints = stats?.recoveredEndpoints ?? 0;
   const activeAlerts = stats?.activeAlerts ?? 0;
   const avgUptime = stats?.avgUptime ?? 0;
   const avgHealthScore = stats?.avgHealthScore ?? (totalEndpoints > 0 ? 100 : 0);
@@ -86,6 +89,12 @@ export default function DashboardPage() {
   const avgResponseTime = stats?.avgResponseTime ?? 0;
   const requestsToday = stats?.requestsToday ?? 0;
   const errorRateToday = stats?.errorRateToday ?? 0;
+
+  const { data: notificationsData } = useGetNotificationsQuery(
+    { pageSize: 5 },
+    { pollingInterval: 8000 }
+  );
+  const recentNotifications: AppNotification[] = notificationsData?.data || stats?.recentNotifications || [];
 
   // Status distribution only shows real status when endpoints exist
   const statusDistData = totalEndpoints > 0
@@ -126,6 +135,79 @@ export default function DashboardPage() {
         <Tag color={s === 'active' ? 'error' : s === 'acknowledged' ? 'warning' : 'success'}>
           {s?.toUpperCase()}
         </Tag>
+      ),
+    },
+  ];
+
+  const notificationColumns = [
+    {
+      title: 'Health Incident Notification',
+      key: 'title',
+      render: (_: unknown, record: AppNotification) => (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          {record.severity === 'critical' ? (
+            <CloseCircleOutlined style={{ color: '#ef4444', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
+          ) : record.severity === 'warning' ? (
+            <ExclamationCircleOutlined style={{ color: '#f59e0b', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
+          ) : (
+            <CheckCircleOutlined style={{ color: '#22c55e', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
+          )}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{record.title}</span>
+              {!record.isRead && (
+                <Tag color="processing" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px', borderRadius: 4 }}>
+                  NEW
+                </Tag>
+              )}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{record.message}</div>
+            {record.endpointPath && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                {record.method && <HttpMethodTag method={record.method} size="sm" />}
+                <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#0958d9', fontWeight: 600 }}>
+                  {record.endpointPath}
+                </span>
+                {record.metadata?.statusCode && (
+                  <Tag color={record.metadata.statusCode >= 500 ? 'red' : record.metadata.statusCode >= 400 ? 'orange' : 'green'} style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>
+                    HTTP {record.metadata.statusCode}
+                  </Tag>
+                )}
+                {record.metadata?.responseTime !== undefined && (
+                  <span style={{ fontSize: 11, color: '#64748b' }}>
+                    {record.metadata.responseTime}ms
+                  </span>
+                )}
+                {record.metadata?.failureReason && (
+                  <span style={{ fontSize: 11, color: '#dc2626' }}>
+                    ({record.metadata.failureReason})
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Severity',
+      dataIndex: 'severity',
+      key: 'severity',
+      width: 90,
+      render: (s: string) => {
+        const color = s === 'critical' ? 'error' : s === 'warning' ? 'warning' : 'success';
+        return <Tag color={color}>{s.toUpperCase()}</Tag>;
+      },
+    },
+    {
+      title: 'Time',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      width: 90,
+      render: (t: string) => (
+        <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+          {fromNow(t)}
+        </span>
       ),
     },
   ];
@@ -235,6 +317,54 @@ export default function DashboardPage() {
         </Card>
       )}
 
+      {/* Intelligent Health & Alerts Incident Status */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #ef4444' }}>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Unhealthy APIs</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: downEndpoints > 0 ? '#ef4444' : '#0f172a', marginTop: 2 }}>
+              {downEndpoints}
+            </div>
+            <div style={{ fontSize: 11, color: downEndpoints > 0 ? '#ef4444' : '#94a3b8' }}>
+              {downEndpoints > 0 ? 'Outages / 5xx errors' : '0 outages detected'}
+            </div>
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #f59e0b' }}>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Degraded APIs</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: degradedEndpoints > 0 ? '#f59e0b' : '#0f172a', marginTop: 2 }}>
+              {degradedEndpoints}
+            </div>
+            <div style={{ fontSize: 11, color: degradedEndpoints > 0 ? '#f59e0b' : '#94a3b8' }}>
+              {degradedEndpoints > 0 ? 'High latency / slow P95' : '0 degraded endpoints'}
+            </div>
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #22c55e' }}>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Recovered APIs</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: '#22c55e', marginTop: 2 }}>
+              {recoveredEndpoints}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>
+              Auto-resolved (24h)
+            </div>
+          </Card>
+        </Col>
+        <Col xs={12} sm={6}>
+          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #6366f1' }}>
+            <div style={{ fontSize: 12, color: '#64748b' }}>Total Active Alerts</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: activeAlerts > 0 ? '#6366f1' : '#0f172a', marginTop: 2 }}>
+              {activeAlerts}
+            </div>
+            <div style={{ fontSize: 11, color: '#64748b' }}>
+              Active rule breaches
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
       {/* Stat Cards - Strictly computed from active database records */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {[
@@ -327,7 +457,12 @@ export default function DashboardPage() {
         </Col>
         <Col xs={24} lg={12}>
           <Card
-            title="Recent Alerts"
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <BellOutlined style={{ color: '#0958d9' }} />
+                <span>Intelligent Health Alerts & Incidents</span>
+              </div>
+            }
             loading={loading}
             extra={
               <Button
@@ -335,27 +470,77 @@ export default function DashboardPage() {
                 onClick={() => navigate('/alerts')}
                 style={{ padding: 0, fontSize: 13 }}
               >
-                View all
+                Notification Center →
               </Button>
             }
+            styles={{ body: { padding: '8px 16px 16px' } }}
           >
-            {alerts.length === 0 ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No active alerts recorded"
-                style={{ padding: '24px 0' }}
-              />
-            ) : (
-              <Table
-                dataSource={alerts}
-                columns={alertColumns}
-                rowKey="id"
-                pagination={false}
-                size="small"
-                scroll={{ x: 500 }}
-                onRow={() => ({ onClick: () => navigate('/alerts'), style: { cursor: 'pointer' } })}
-              />
-            )}
+            <Tabs
+              defaultActiveKey="notifications"
+              items={[
+                {
+                  key: 'notifications',
+                  label: (
+                    <span>
+                      Live Health Alerts
+                      {recentNotifications.filter(n => !n.isRead).length > 0 && (
+                        <Badge
+                          count={recentNotifications.filter(n => !n.isRead).length}
+                          style={{ marginLeft: 6, backgroundColor: '#ef4444' }}
+                        />
+                      )}
+                    </span>
+                  ),
+                  children: recentNotifications.length === 0 ? (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="No active health alerts. All monitored endpoints are healthy."
+                      style={{ padding: '24px 0' }}
+                    />
+                  ) : (
+                    <Table
+                      dataSource={recentNotifications}
+                      columns={notificationColumns}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                      scroll={{ x: 450 }}
+                      onRow={(record) => ({
+                        onClick: () => {
+                          if (record.endpointId) {
+                            navigate(`/endpoints/${record.endpointId}`);
+                          } else {
+                            navigate('/alerts');
+                          }
+                        },
+                        style: { cursor: 'pointer' },
+                      })}
+                    />
+                  ),
+                },
+                {
+                  key: 'alerts',
+                  label: `Rule Alerts (${alerts.length})`,
+                  children: alerts.length === 0 ? (
+                    <Empty
+                      image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      description="No active alerts recorded"
+                      style={{ padding: '24px 0' }}
+                    />
+                  ) : (
+                    <Table
+                      dataSource={alerts}
+                      columns={alertColumns}
+                      rowKey="id"
+                      pagination={false}
+                      size="small"
+                      scroll={{ x: 450 }}
+                      onRow={() => ({ onClick: () => navigate('/alerts'), style: { cursor: 'pointer' } })}
+                    />
+                  ),
+                },
+              ]}
+            />
           </Card>
         </Col>
       </Row>

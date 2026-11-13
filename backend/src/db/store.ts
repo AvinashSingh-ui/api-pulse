@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type {
   User, Project, Endpoint, Alert, AlertRule, RequestLog,
-  TestCase, TestResult, AIInsight,
+  TestCase, TestResult, AIInsight, AppNotification,
 } from '../types/index.js';
 
 interface DatabaseSchema {
@@ -15,6 +15,7 @@ interface DatabaseSchema {
   testCases: TestCase[];
   testResults: TestResult[];
   aiInsights: AIInsight[];
+  notifications: AppNotification[];
 }
 
 const BASE_DIR = process.cwd().endsWith('backend') ? process.cwd() : path.join(process.cwd(), 'backend');
@@ -59,6 +60,9 @@ class DatabaseStore {
           const aiInsights: AIInsight[] = Array.isArray(parsed.aiInsights)
             ? parsed.aiInsights.filter((i: AIInsight) => !i.projectId || projectIds.has(i.projectId))
             : [];
+          const notifications: AppNotification[] = Array.isArray(parsed.notifications)
+            ? parsed.notifications.filter((n: AppNotification) => !n.projectId || projectIds.has(n.projectId))
+            : [];
 
           const cleanState = {
             users: Array.isArray(parsed.users) ? parsed.users : [],
@@ -70,6 +74,7 @@ class DatabaseStore {
             testCases: Array.isArray(parsed.testCases) ? parsed.testCases : [],
             testResults: Array.isArray(parsed.testResults) ? parsed.testResults : [],
             aiInsights,
+            notifications,
           };
 
           // If orphans were pruned, sync back to disk
@@ -94,6 +99,7 @@ class DatabaseStore {
       testCases: [],
       testResults: [],
       aiInsights: [],
+      notifications: [],
     };
 
     this.persistSync(cleanInitial);
@@ -131,6 +137,7 @@ class DatabaseStore {
   public get testCases() { return this.data.testCases; }
   public get testResults() { return this.data.testResults; }
   public get aiInsights() { return this.data.aiInsights; }
+  public get notifications() { return this.data.notifications; }
 }
 
 export const db = new DatabaseStore();

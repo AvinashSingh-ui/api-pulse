@@ -155,6 +155,41 @@ export interface Alert {
   threshold: number;
 }
 
+// ── Notifications ─────────────────────────────────────────
+export type NotificationSeverity = 'critical' | 'warning' | 'success' | 'info';
+export type NotificationType = 'degraded' | 'unhealthy' | 'recovered' | 'latency_spike' | 'error_rate' | 'consecutive_failures' | 'system';
+
+export interface AppNotification {
+  id: string;
+  projectId?: string;
+  projectName?: string;
+  endpointId?: string;
+  endpointName?: string;
+  endpointPath?: string;
+  method?: HttpMethod;
+  title: string;
+  message: string;
+  severity: NotificationSeverity;
+  type: NotificationType;
+  isRead: boolean;
+  createdAt: string;
+  metadata?: {
+    statusCode?: number;
+    responseTime?: number;
+    healthScore?: number;
+    failureReason?: string;
+    incidentId?: string;
+  };
+}
+
+export interface NotificationPreferences {
+  soundEnabled: boolean;
+  soundOnCritical: boolean;
+  soundOnWarning: boolean;
+  soundOnRecovery: boolean;
+  inAppAlertsEnabled: boolean;
+}
+
 // ── AI Analysis ───────────────────────────────────────────
 export interface AIInsight {
   id: string;
@@ -231,6 +266,8 @@ export interface DashboardStats {
   healthyEndpoints: number;
   degradedEndpoints: number;
   downEndpoints: number;
+  recoveredEndpoints?: number;
+  recentNotifications?: AppNotification[];
 }
 
 // ── API Generic ───────────────────────────────────────────

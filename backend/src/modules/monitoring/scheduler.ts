@@ -4,6 +4,7 @@ import { db } from '../../db/store.js';
 import { sqliteService } from '../../db/sqlite.js';
 import type { Endpoint, RequestLog, Alert } from '../../types/index.js';
 import { healthService } from './health.service.js';
+import { notificationService } from '../notifications/notification.service.js';
 
 class MonitoringScheduler {
   private timer: NodeJS.Timeout | null = null;
@@ -69,6 +70,7 @@ class MonitoringScheduler {
   }
 
   private async pingEndpoint(endpoint: Endpoint): Promise<void> {
+    const prevStatus = endpoint.status;
     const project = db.projects.find(p => p.id === endpoint.projectId);
     if (!project || project.status === 'deleted' || project.deletedAt) {
       return; // Do not monitor endpoints of deleted projects
@@ -211,6 +213,18 @@ class MonitoringScheduler {
         a.resolvedAt = new Date().toISOString();
       }
     }
+
+    // Trigger intelligent health alerts & notifications
+    notificationService.handleHealthTransition({
+      endpoint,
+      prevStatus,
+      newStatus: endpoint.status,
+      statusCode,
+      responseTime: measuredRt,
+      healthScore: endpoint.healthScore,
+      degradationReason: endpoint.degradationReason,
+      failureType,
+    });
 
     // Check custom alert rule triggers
     this.evaluateAlertsForEndpoint(endpoint, measuredRt, isSuccess);

@@ -135,12 +135,46 @@ export class SQLiteService {
         threshold_value REAL
       );
 
+      CREATE TABLE IF NOT EXISTS notifications (
+        id TEXT PRIMARY KEY,
+        project_id TEXT,
+        endpoint_id TEXT,
+        title TEXT NOT NULL,
+        message TEXT NOT NULL,
+        severity TEXT DEFAULT 'warning',
+        type TEXT DEFAULT 'degraded',
+        is_read INTEGER DEFAULT 0,
+        metadata TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+        FOREIGN KEY (endpoint_id) REFERENCES endpoints(id) ON DELETE CASCADE
+      );
+
       CREATE INDEX IF NOT EXISTS idx_endpoints_project ON endpoints(project_id);
       CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON request_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_logs_status ON request_logs(status_code);
+      CREATE INDEX IF NOT EXISTS idx_notifications_endpoint ON notifications(endpoint_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at);
+      CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);
     `);
 
     // Safe dynamic migration for existing databases
+    try {
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id TEXT PRIMARY KEY,
+          project_id TEXT,
+          endpoint_id TEXT,
+          title TEXT NOT NULL,
+          message TEXT NOT NULL,
+          severity TEXT DEFAULT 'warning',
+          type TEXT DEFAULT 'degraded',
+          is_read INTEGER DEFAULT 0,
+          metadata TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+    } catch {}
     try { this.db.exec('ALTER TABLE projects ADD COLUMN user_id TEXT'); } catch {}
     try { this.db.exec('ALTER TABLE projects ADD COLUMN deleted_at TEXT'); } catch {}
     try { this.db.exec('ALTER TABLE endpoints ADD COLUMN health_score INTEGER DEFAULT 100'); } catch {}

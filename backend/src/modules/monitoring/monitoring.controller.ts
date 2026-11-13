@@ -97,6 +97,14 @@ export const monitoringController = {
       };
     });
 
+    const recoveredEndpoints = db.notifications.filter(
+      n => n.type === 'recovered' && (!n.projectId || activeProjectIds.has(n.projectId))
+    ).length;
+
+    const recentNotifications = db.notifications
+      .filter(n => !n.projectId || activeProjectIds.has(n.projectId))
+      .slice(0, 10);
+
     const stats: DashboardStats = {
       totalProjects,
       totalEndpoints,
@@ -110,6 +118,8 @@ export const monitoringController = {
       healthyEndpoints,
       degradedEndpoints,
       downEndpoints,
+      recoveredEndpoints,
+      recentNotifications,
       needingAttention,
       recentActivity,
     };

@@ -414,6 +414,9 @@ export const projectsController = {
     for (let i = db.aiInsights.length - 1; i >= 0; i--) {
       if (db.aiInsights[i].projectId === id) db.aiInsights.splice(i, 1);
     }
+    for (let i = db.notifications.length - 1; i >= 0; i--) {
+      if (db.notifications[i].projectId === id) db.notifications.splice(i, 1);
+    }
 
     // Cascade delete in SQLite
     if (sqliteService.isConnected) {
@@ -423,6 +426,7 @@ export const projectsController = {
         sqliteService.execute('DELETE FROM alert_rules WHERE project_id = ?', [id]);
         sqliteService.execute('DELETE FROM alerts WHERE project_id = ?', [id]);
         sqliteService.execute('DELETE FROM request_logs WHERE project_id = ?', [id]);
+        sqliteService.execute('DELETE FROM notifications WHERE project_id = ?', [id]);
       } catch (err: any) {
         console.warn('[Projects] SQLite permanent delete error:', err.message);
       }

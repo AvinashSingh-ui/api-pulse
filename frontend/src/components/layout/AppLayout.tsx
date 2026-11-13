@@ -3,6 +3,7 @@ import { Layout } from 'antd';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header }  from './Header';
+import { NotificationNotifier } from '@/components/notifications/NotificationNotifier';
 import { useAppSelector } from '@/app/hooks';
 import { useResponsive } from '@/hooks/useResponsive';
 
@@ -15,6 +16,7 @@ export const AppLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
+      <NotificationNotifier />
       <Sidebar />
       <Layout style={{ marginLeft: sidebarWidth, transition: 'margin-left 0.2s ease' }}>
         <Header />

@@ -7,6 +7,7 @@ import { postgresService } from '../../db/postgres.js';
 import type { Endpoint, RequestLog, HttpMethod, Alert } from '../../types/index.js';
 import { aiService } from '../ai/ai.service.js';
 import { healthService } from '../monitoring/health.service.js';
+import { notificationService } from '../notifications/notification.service.js';
 
 // In-flight check tracker to prevent duplicate concurrent checks for the same endpoint
 const activeChecks = new Set<string>();
@@ -319,6 +320,7 @@ export const endpointsController = {
     activeChecks.add(id);
 
     try {
+      const prevStatus = endpoint.status;
       const project = db.projects.find(p => p.id === endpoint.projectId);
       if (!project || project.status === 'deleted' || project.deletedAt) {
         return res.status(400).json({ message: 'Cannot execute check: Parent project is deleted or inactive' });
@@ -535,6 +537,18 @@ export const endpointsController = {
         }
       }
 
+      // Trigger intelligent health alerts & notifications
+      const triggeredNotification = notificationService.handleHealthTransition({
+        endpoint,
+        prevStatus,
+        newStatus: endpoint.status,
+        statusCode,
+        responseTime: measuredRt,
+        healthScore: endpoint.healthScore,
+        degradationReason: endpoint.degradationReason,
+        failureType,
+      });
+
       db.save();
 
       const latestInsight = db.aiInsights.find(i => i.endpointId === endpoint.id);
@@ -551,6 +565,7 @@ export const endpointsController = {
         failureType,
         error: errorMessage,
         alert: raisedAlert,
+        notification: triggeredNotification,
         aiInsight: latestInsight,
         endpoint,
       });
