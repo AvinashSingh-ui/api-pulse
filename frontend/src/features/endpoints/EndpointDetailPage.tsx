@@ -20,12 +20,22 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ResponseTimeChart } from '@/components/charts/ResponseTimeChart';
 import { RequestVolumeChart } from '@/components/charts/RequestVolumeChart';
 import { StatusDistributionChart } from '@/components/charts/StatusDistributionChart';
+import { useResponsive } from '@/hooks/useResponsive';
 import { endpointsService } from '@/services/endpoints/endpoints';
 import { projectsService } from '@/services/endpoints/projects';
 import { logsService } from '@/services/endpoints/logs';
 import { formatResponseTime, fromNow } from '@/utils';
 import type { Endpoint, MetricPoint, RequestLog, Project } from '@/types';
 
+/**
+ * EndpointDetailPage:
+ * - Displays in-depth telemetry for a specific API route (P50, P95, P99 latency, uptime, live traffic).
+ * - Beginner-Friendly Architecture:
+ *   1. Functional State Updates: Uses `setChecks(prev => [newCheck, ...prev])` to avoid stale closures.
+ *   2. Responsive Ant Design Drawer & Tables: Drawer adapts to mobile (`width={isMobile ? '100%' : 500}`) and tables have horizontal scrolling (`scroll={{ x: ... }}`).
+ *   3. Real Database Persistence: Changes in the settings form are saved directly via `endpointsService.update()`.
+ *   4. Direct Route to AI Fix: If a live ping fails, the user is immediately taken to the Alert & AI Fix drawer.
+ */
 interface HealthCheckRecord {
   id: string;
   timestamp: string;
@@ -54,6 +64,7 @@ function generateTimeSeries(points = 24, base = 85, variance = 25): MetricPoint[
 export default function EndpointDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
   const endpointId = id || '';
 
   const [endpoint, setEndpoint] = useState<Endpoint | null>(null);
@@ -133,7 +144,7 @@ export default function EndpointDetailPage() {
         assertionPassed: (res.statusCode || 200) < 400,
       };
 
-      setChecks([newCheck, ...checks]);
+      setChecks(prev => [newCheck, ...prev]);
       setEndpoint(prev => prev ? ({
         ...prev,
         responseTimeP50: measuredRt,
@@ -177,15 +188,31 @@ export default function EndpointDetailPage() {
         expected: values.expected,
         enabled: true,
       };
-      setAssertions([...assertions, newAs]);
+      setAssertions(prev => [...prev, newAs]);
       setIsAssertionModalOpen(false);
       assertionForm.resetFields();
       message.success('Assertion rule added');
     } catch {}
   };
 
-  const handleSaveSettings = () => {
-    message.success('Endpoint monitoring configuration saved!');
+  const handleSaveSettings = async (values: any) => {
+    if (!endpoint) return;
+    try {
+      const rawInterval = values.interval || '60s';
+      const intervalSec = String(rawInterval).endsWith('m')
+        ? parseInt(rawInterval, 10) * 60
+        : parseInt(rawInterval, 10);
+
+      const updated = await endpointsService.update(endpoint.id, {
+        interval: intervalSec || 60,
+        timeout: values.timeout || 5000,
+        status: values.active ? (endpoint.status === 'paused' ? 'healthy' : endpoint.status) : 'paused',
+      });
+      setEndpoint(updated);
+      message.success('Endpoint monitoring configuration saved!');
+    } catch {
+      message.error('Failed to save endpoint settings');
+    }
   };
 
   if (isLoading) {
@@ -454,6 +481,7 @@ export default function EndpointDetailPage() {
                       rowKey="id"
                       pagination={{ pageSize: 10 }}
                       size="small"
+                      scroll={{ x: 600 }}
                     />
                   )}
                 </div>
@@ -478,6 +506,7 @@ export default function EndpointDetailPage() {
                       dataSource={logs}
                       rowKey="id"
                       size="small"
+                      scroll={{ x: 600 }}
                       pagination={{ pageSize: 10 }}
                       onRow={(record) => ({
                         onClick: () => setSelectedLog(record),
@@ -557,6 +586,7 @@ export default function EndpointDetailPage() {
                     rowKey="id"
                     pagination={false}
                     size="small"
+                    scroll={{ x: 500 }}
                     columns={[
                       {
                         title: 'Assertion Target',
@@ -649,7 +679,7 @@ export default function EndpointDetailPage() {
       <Drawer
         title="Request Details"
         placement="right"
-        width={500}
+        width={isMobile ? '100%' : 500}
         onClose={() => setSelectedLog(null)}
         open={Boolean(selectedLog)}
       >

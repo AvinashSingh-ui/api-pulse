@@ -19,6 +19,15 @@ import { alertsService }           from '@/services/endpoints/alerts';
 import { endpointsService }        from '@/services/endpoints/endpoints';
 import type { Alert, Endpoint, MetricPoint, DashboardStats } from '@/types';
 
+/**
+ * DashboardPage:
+ * - Serves as the central command center for API Pulse.
+ * - Beginner-Friendly Architecture:
+ *   1. Parallel Data Fetching: Loads stats, alerts, endpoints, and timeseries data simultaneously using Promise.all.
+ *   2. Safe State Updates: Uses a `mounted` boolean flag in `useEffect` to prevent React state updates if the user navigates away early.
+ *   3. Responsive Ant Design Tables: Tables include `scroll={{ x: 500 }}` so they scroll cleanly on mobile devices without layout overflow.
+ *   4. Reusable Stat Cards: Summary statistics are mapped into Ant Design Grid <Row> and <Col> components.
+ */
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -304,6 +313,7 @@ export default function DashboardPage() {
                 rowKey="id"
                 pagination={false}
                 size="small"
+                scroll={{ x: 500 }}
                 onRow={() => ({ onClick: () => navigate('/alerts'), style: { cursor: 'pointer' } })}
               />
             )}
@@ -342,6 +352,7 @@ export default function DashboardPage() {
             rowKey="id"
             pagination={false}
             size="small"
+            scroll={{ x: 500 }}
           />
         )}
       </Card>

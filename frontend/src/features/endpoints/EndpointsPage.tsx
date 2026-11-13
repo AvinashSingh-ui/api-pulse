@@ -18,21 +18,46 @@ import { projectsService }  from '@/services/endpoints/projects';
 import { formatResponseTime, fromNow } from '@/utils';
 import type { Endpoint, HttpMethod, Project } from '@/types';
 
+/**
+ * EndpointsPage:
+ * - Displays all registered API routes with real-time status badges, P50/P95 latency, and 24h uptime.
+ * - Beginner-Friendly Architecture:
+ *   1. Modal & Form Reset: Initializes form values on open (`handleOpenCreateModal`) so `projectId` is never blank.
+ *   2. Stop Event Propagation: Action buttons inside table cells use `e.stopPropagation()` so clicking a button doesn't trigger the row navigation.
+ *   3. Popconfirm Safety: Uses Ant Design's built-in `<Popconfirm>` dialog before executing destructive DELETE actions.
+ *   4. Direct Route to AI Fix: If a live ping fails, the user is immediately taken to the Alert & AI Fix drawer.
+ */
 export default function EndpointsPage() {
   const navigate = useNavigate();
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
-  const [projects, setProjects]   = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch]       = useState('');
-  const [method, setMethod]       = useState<string>('all');
-  const [status, setStatus]       = useState<string>('all');
-  const [project, setProject]     = useState<string>('all');
+  const [search, setSearch] = useState('');
+  const [method, setMethod] = useState<string>('all');
+  const [status, setStatus] = useState<string>('all');
+  const [project, setProject] = useState<string>('all');
   const [checkingId, setCheckingId] = useState<string | null>(null);
 
   // New Endpoint Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form] = Form.useForm();
+
+  const handleOpenCreateModal = () => {
+    if (projects.length === 0) {
+      message.warning('Please create a project first before registering endpoints.');
+      navigate('/projects');
+      return;
+    }
+    form.setFieldsValue({
+      projectId: projects[0]?.id,
+      method: 'GET',
+      interval: 60,
+      expectedStatus: 200,
+      timeout: 5000,
+    });
+    setIsModalOpen(true);
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -108,7 +133,7 @@ export default function EndpointsPage() {
       if (isDegradedOrDown) {
         notification.error({
           message: `🚨 Health Issue Detected: ${res.status.toUpperCase()}`,
-          description: `Endpoint returned HTTP ${res.statusCode || 'Error'} in ${res.responseTime}ms. ${res.error || ''} Moving directly to Alert & AI Fix...`,
+          description: `Endpoint returned HTTP ${res.statusCode || 'Error'} in ${res.responseTime}ms.${res.error || ''} Moving directly to Alert & AI Fix...`,
           duration: 3,
         });
         setTimeout(() => {
@@ -250,14 +275,7 @@ export default function EndpointsPage() {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() => {
-                if (projects.length === 0) {
-                  message.warning('Please create a project first before registering endpoints.');
-                  navigate('/projects');
-                } else {
-                  setIsModalOpen(true);
-                }
-              }}
+              onClick={handleOpenCreateModal}
               style={{ borderRadius: 8 }}
             >
               Add Endpoint
@@ -323,10 +341,7 @@ export default function EndpointsPage() {
             <Button
               type="primary"
               icon={<PlusOutlined />}
-              onClick={() => {
-                if (projects.length === 0) navigate('/projects');
-                else setIsModalOpen(true);
-              }}
+              onClick={handleOpenCreateModal}
             >
               {projects.length === 0 ? 'Create a Project First' : 'Add First Endpoint'}
             </Button>
@@ -359,6 +374,7 @@ export default function EndpointsPage() {
         cancelText="Cancel"
         destroyOnClose
         width={560}
+        style={{ maxWidth: '95vw' }}
       >
         <Form
           form={form}

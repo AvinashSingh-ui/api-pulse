@@ -64,6 +64,8 @@ export default function ProjectDetailPage() {
         alertsService.listAlerts({ projectId }).catch(() => ({ data: [] })),
       ]);
 
+      
+
       if (projData) {
         setProject(projData);
         settingsForm.setFieldsValue({

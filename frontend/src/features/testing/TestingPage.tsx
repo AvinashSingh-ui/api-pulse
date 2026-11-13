@@ -56,6 +56,14 @@ const statusColor = (s?: TestStatus): string => {
   return m[s ?? 'pending'] ?? 'default';
 };
 
+/**
+ * TestingPage:
+ * - Automated synthetic API testing suite and HTTP endpoint assertion verification.
+ * - Beginner-Friendly Architecture:
+ *   1. Safe Input Parsing: Protects against invalid JSON syntax when users supply custom HTTP headers.
+ *   2. Responsive Layout: Side-by-side test case list and test execution console adjust dynamically for tablet/mobile.
+ *   3. Live Execution: Executes synthetic HTTP assertions against endpoints and displays status, duration, and body response.
+ */
 export default function TestingPage() {
   const navigate = useNavigate();
   const { isTablet } = useResponsive();
@@ -135,12 +143,24 @@ export default function TestingPage() {
   const handleCreateTestCase = async () => {
     try {
       const values = await form.validateFields();
+
+      // Safe JSON parsing: prevent crash if user types invalid JSON in custom headers
+      let parsedHeaders = { Accept: 'application/json' };
+      if (values.headers && values.headers.trim()) {
+        try {
+          parsedHeaders = JSON.parse(values.headers);
+        } catch {
+          message.error('Custom headers must be a valid JSON object, e.g. {"Authorization": "Bearer token"}');
+          return;
+        }
+      }
+
       const newCase = await testingService.createTestCase({
         name: values.name,
         endpointId: values.endpointId,
         method: values.method || 'GET',
         url: values.url,
-        headers: values.headers ? JSON.parse(values.headers) : { Accept: 'application/json' },
+        headers: parsedHeaders,
         body: values.body || undefined,
         assertions: [
           {

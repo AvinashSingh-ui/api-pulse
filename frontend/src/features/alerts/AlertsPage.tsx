@@ -44,6 +44,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { PageHeader }    from '@/components/common/PageHeader';
 import { SeverityBadge } from '@/components/common/StatusBadge';
 import { HttpMethodTag } from '@/components/common/HttpMethodTag';
+import { useResponsive } from '@/hooks/useResponsive';
 import { fromNow } from '@/utils';
 import { alertsService }   from '@/services/endpoints/alerts';
 import { projectsService } from '@/services/endpoints/projects';
@@ -60,9 +61,19 @@ const SEVERITY_ROW_BG: Record<AlertSeverity, string> = {
   low: '#f0f9ff',
 };
 
+/**
+ * Alerts & Incident Response Page
+ * ----------------------------------------------------
+ * Beginner-Friendly Structure:
+ * 1. Fetches active alerts, resolved history, and alert rules from database
+ * 2. If navigated from a failing API ping (?endpointId=...&aiFix=true), automatically
+ *    opens the AI Incident Diagnosis & Resolution Drawer
+ * 3. Allows testing and recovering the API in-place with "Re-Test API Now"
+ */
 export default function AlertsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isMobile } = useResponsive();
 
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [rules, setRules] = useState<AlertRule[]>([]);
@@ -528,6 +539,7 @@ export default function AlertsPage() {
           rowKey="id"
           pagination={false}
           size="small"
+          scroll={{ x: 800 }}
           onRow={(r) => ({ style: { background: SEVERITY_ROW_BG[r.severity] } })}
         />
       ),
@@ -548,6 +560,7 @@ export default function AlertsPage() {
           rowKey="id"
           pagination={{ pageSize: 20 }}
           size="small"
+          scroll={{ x: 800 }}
         />
       ),
     },
@@ -571,6 +584,7 @@ export default function AlertsPage() {
           rowKey="id"
           pagination={false}
           size="small"
+          scroll={{ x: 800 }}
         />
       ),
     },
@@ -638,7 +652,7 @@ export default function AlertsPage() {
           </div>
         }
         placement="right"
-        width={720}
+        width={isMobile ? '100%' : 700}
         onClose={() => {
           setIsAiDrawerOpen(false);
           // clear query params if present
