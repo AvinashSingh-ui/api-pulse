@@ -16,7 +16,14 @@ export const endpointsController = {
     const method = req.query.method as string;
     const status = req.query.status as string;
 
-    let items = db.endpoints;
+    // Filter out endpoints belonging to deleted or archived projects
+    const activeProjectIds = new Set(
+      db.projects
+        .filter(p => p.status === 'active' && !p.deletedAt)
+        .map(p => p.id)
+    );
+
+    let items = db.endpoints.filter(e => activeProjectIds.has(e.projectId));
 
     if (projectId) {
       items = items.filter(e => e.projectId === projectId);
@@ -212,7 +219,10 @@ export const endpointsController = {
     }
 
     const project = db.projects.find(p => p.id === endpoint.projectId);
-    const targetUrl = project ? `${project.baseUrl}${endpoint.path}` : endpoint.path;
+    if (!project || project.status === 'deleted' || project.deletedAt) {
+      return res.status(400).json({ message: 'Cannot execute check: Parent project is deleted or inactive' });
+    }
+    const targetUrl = `${project.baseUrl}${endpoint.path}`;
 
     const startTime = Date.now();
     let measuredRt = 0;

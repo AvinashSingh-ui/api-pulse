@@ -59,6 +59,8 @@ export class SQLiteService {
         environment TEXT DEFAULT 'production',
         endpoint_count INTEGER DEFAULT 0,
         health_score INTEGER DEFAULT 100,
+        user_id TEXT,
+        deleted_at TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP,
         updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
@@ -133,6 +135,10 @@ export class SQLiteService {
       CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON request_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_logs_status ON request_logs(status_code);
     `);
+
+    // Safe dynamic migration for existing databases
+    try { this.db.exec('ALTER TABLE projects ADD COLUMN user_id TEXT'); } catch {}
+    try { this.db.exec('ALTER TABLE projects ADD COLUMN deleted_at TEXT'); } catch {}
   }
 
   public query<T = any>(sql: string, params: any[] = []): T[] {

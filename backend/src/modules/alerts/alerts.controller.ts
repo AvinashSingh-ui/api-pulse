@@ -13,7 +13,14 @@ export const alertsController = {
     const severity = req.query.severity as string;
     const projectId = req.query.projectId as string;
 
-    let items = db.alerts;
+    // Only include alerts for active, non-deleted projects
+    const activeProjectIds = new Set(
+      db.projects
+        .filter(p => p.status === 'active' && !p.deletedAt)
+        .map(p => p.id)
+    );
+
+    let items = db.alerts.filter(a => activeProjectIds.has(a.projectId));
 
     if (projectId) {
       items = items.filter(a => a.projectId === projectId);

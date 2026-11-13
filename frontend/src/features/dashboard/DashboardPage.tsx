@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Tag, Button, Alert as AntAlert, Empty, Spin } from 'antd';
+import { Row, Col, Card, Table, Tag, Button, Empty, Space } from 'antd';
 import {
   FolderOutlined, ApiOutlined, RiseOutlined, ThunderboltOutlined,
   BellOutlined, BarChartOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
-  PlusOutlined,
+  PlusOutlined, HistoryOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader }              from '@/components/common/PageHeader';
@@ -21,12 +21,9 @@ import type { Alert, Endpoint, MetricPoint, DashboardStats } from '@/types';
 
 /**
  * DashboardPage:
- * - Serves as the central command center for API Pulse.
- * - Beginner-Friendly Architecture:
- *   1. Parallel Data Fetching: Loads stats, alerts, endpoints, and timeseries data simultaneously using Promise.all.
- *   2. Safe State Updates: Uses a `mounted` boolean flag in `useEffect` to prevent React state updates if the user navigates away early.
- *   3. Responsive Ant Design Tables: Tables include `scroll={{ x: 500 }}` so they scroll cleanly on mobile devices without layout overflow.
- *   4. Reusable Stat Cards: Summary statistics are mapped into Ant Design Grid <Row> and <Col> components.
+ * - Real-time command center for API Pulse.
+ * - Guarantees data consistency: All metrics are computed strictly from active database records.
+ * - Shows appropriate empty states (N/A / 0) when no active projects or endpoints exist.
  */
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -83,18 +80,19 @@ export default function DashboardPage() {
   const degradedEndpoints = stats?.degradedEndpoints ?? 0;
   const downEndpoints = stats?.downEndpoints ?? 0;
   const activeAlerts = stats?.activeAlerts ?? 0;
-  const avgUptime = stats?.avgUptime ?? 100;
+  const avgUptime = stats?.avgUptime ?? 0;
   const avgResponseTime = stats?.avgResponseTime ?? 0;
   const requestsToday = stats?.requestsToday ?? 0;
   const errorRateToday = stats?.errorRateToday ?? 0;
 
+  // Status distribution only shows real status when endpoints exist
   const statusDistData = totalEndpoints > 0
     ? [
         { name: 'Healthy',  value: healthyEndpoints,  color: '#22c55e' },
         { name: 'Degraded', value: degradedEndpoints, color: '#f59e0b' },
         { name: 'Down',     value: downEndpoints,     color: '#ef4444' },
       ].filter(d => d.value > 0)
-    : [{ name: 'No Endpoints', value: 1, color: '#e2e8f0' }];
+    : [];
 
   const alertColumns = [
     {
@@ -178,9 +176,12 @@ export default function DashboardPage() {
     <div>
       <PageHeader
         title="Dashboard"
-        subtitle="Real-time overview of all your API projects"
+        subtitle="Real-time overview of all active API projects and live telemetry"
         actions={
           <div style={{ display: 'flex', gap: 8 }}>
+            <Button icon={<HistoryOutlined />} onClick={() => navigate('/projects?tab=history')}>
+              Project History
+            </Button>
             <Button icon={<PlusOutlined />} onClick={() => navigate('/projects')}>
               Add Project
             </Button>
@@ -191,23 +192,48 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Onboarding Banner when no projects exist */}
+      {/* Meaningful empty-state card when zero active projects exist */}
       {!loading && totalProjects === 0 && (
-        <AntAlert
-          message="Welcome to API Pulse"
-          description="All monitoring engines are online. You don't have any projects yet. Create your first project to begin tracking real-time API telemetry, latency, and automated alerts."
-          type="info"
-          showIcon
-          action={
-            <Button type="primary" size="small" onClick={() => navigate('/projects')}>
-              Create Your First Project
-            </Button>
-          }
-          style={{ marginBottom: 24, borderRadius: 8, border: '1px solid #bae0ff' }}
-        />
+        <Card
+          style={{
+            marginBottom: 24,
+            borderRadius: 12,
+            border: '1px solid #bae0ff',
+            background: 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%)',
+          }}
+          styles={{ body: { padding: '24px 28px' } }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: '#0958d9' }}>
+                No active projects yet
+              </h3>
+              <p style={{ margin: 0, color: '#475569', fontSize: 14 }}>
+                No active projects yet. Create your first project to start monitoring API performance.
+              </p>
+            </div>
+            <Space size={10}>
+              <Button
+                icon={<HistoryOutlined />}
+                onClick={() => navigate('/projects?tab=history')}
+                style={{ borderRadius: 8 }}
+              >
+                View Project History
+              </Button>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/projects')}
+                style={{ borderRadius: 8 }}
+              >
+                Create Your First Project
+              </Button>
+            </Space>
+          </div>
+        </Card>
       )}
 
-      {/* Stat Cards */}
+      {/* Stat Cards - Strictly computed from active database records */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {[
           {
@@ -215,48 +241,56 @@ export default function DashboardPage() {
             value: totalProjects.toString(),
             icon: <FolderOutlined />,
             color: '#4f8ef7',
+            subtitle: totalProjects === 0 ? 'No active projects' : `${totalProjects} active`,
           },
           {
             title: 'Total Endpoints',
             value: totalEndpoints.toString(),
             icon: <ApiOutlined />,
             color: '#7c5cfc',
+            subtitle: totalEndpoints === 0 ? 'No active endpoints' : `${healthyEndpoints} healthy`,
           },
           {
             title: 'Avg Uptime',
-            value: totalEndpoints > 0 ? `${avgUptime}%` : '100%',
+            value: totalEndpoints > 0 ? `${avgUptime}%` : 'N/A',
             icon: <RiseOutlined />,
             color: '#22c55e',
+            subtitle: totalEndpoints > 0 ? 'Active routes' : 'Awaiting endpoints',
           },
           {
             title: 'Avg Response Time',
-            value: totalEndpoints > 0 ? `${avgResponseTime}ms` : '0ms',
+            value: totalEndpoints > 0 ? `${avgResponseTime}ms` : 'N/A',
             icon: <ThunderboltOutlined />,
             color: '#f59e0b',
+            subtitle: totalEndpoints > 0 ? 'P50 median' : 'Awaiting traffic',
           },
           {
             title: 'Active Alerts',
-            value: activeAlerts.toString(),
+            value: totalProjects > 0 ? activeAlerts.toString() : '0',
             icon: <BellOutlined />,
             color: activeAlerts > 0 ? '#ef4444' : '#22c55e',
+            subtitle: activeAlerts > 0 ? 'Requires attention' : 'All systems normal',
           },
           {
             title: 'Requests Logged',
-            value: formatNumber(requestsToday),
+            value: totalProjects > 0 ? formatNumber(requestsToday) : '0',
             icon: <BarChartOutlined />,
             color: '#00d4aa',
+            subtitle: 'Active telemetry logs',
           },
           {
             title: 'Error Rate',
-            value: `${errorRateToday.toFixed(1)}%`,
+            value: totalEndpoints > 0 && requestsToday > 0 ? `${errorRateToday.toFixed(1)}%` : 'N/A',
             icon: <ExclamationCircleOutlined />,
             color: errorRateToday > 5 ? '#ef4444' : errorRateToday > 1 ? '#f97316' : '#22c55e',
+            subtitle: totalEndpoints > 0 && requestsToday > 0 ? 'Last 24 hours' : 'No errors logged',
           },
           {
             title: 'Healthy Endpoints',
-            value: `${healthyEndpoints}/${totalEndpoints}`,
+            value: totalEndpoints > 0 ? `${healthyEndpoints}/${totalEndpoints}` : '0/0',
             icon: <CheckCircleOutlined />,
             color: '#22c55e',
+            subtitle: totalEndpoints > 0 ? `${Math.round((healthyEndpoints / totalEndpoints) * 100)}% operational` : 'No endpoints',
           },
         ].map((s, i) => (
           <Col key={i} xs={24} sm={12} md={8} lg={6}>
@@ -265,13 +299,14 @@ export default function DashboardPage() {
               value={s.value}
               icon={s.icon}
               color={s.color}
+              subtitle={s.subtitle}
               loading={loading}
             />
           </Col>
         ))}
       </Row>
 
-      {/* Charts Row 1 */}
+      {/* Charts Row 1: Response Time & Status Distribution */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={16}>
           <ResponseTimeChart data={rtData} loading={loading} />
@@ -281,7 +316,7 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      {/* Charts Row 2 + Recent Alerts */}
+      {/* Charts Row 2: Request Volume & Recent Alerts */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={12}>
           <RequestVolumeChart data={rvData} loading={loading} />
@@ -338,7 +373,7 @@ export default function DashboardPage() {
         {endpoints.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No endpoints configured yet. Add endpoints to your projects to start tracking traffic."
+            description="No active endpoints configured yet. Add endpoints to your projects to start tracking traffic."
             style={{ padding: '24px 0' }}
           >
             <Button type="primary" size="small" onClick={() => navigate('/endpoints')}>

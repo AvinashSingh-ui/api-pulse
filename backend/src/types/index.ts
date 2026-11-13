@@ -10,7 +10,7 @@ export interface User {
   createdAt: string;
 }
 
-export type ProjectStatus = 'active' | 'inactive' | 'archived';
+export type ProjectStatus = 'active' | 'inactive' | 'archived' | 'deleted';
 export type Environment = 'production' | 'staging' | 'development';
 
 export interface Project {
@@ -25,6 +25,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   tags: string[];
+  userId?: string;
+  deletedAt?: string | null;
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';

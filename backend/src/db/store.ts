@@ -39,17 +39,45 @@ class DatabaseStore {
         const raw = fs.readFileSync(DATA_FILE, 'utf-8');
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
-          return {
+          const projects: Project[] = Array.isArray(parsed.projects) ? parsed.projects : [];
+          const projectIds = new Set(projects.map((p: Project) => p.id));
+          const endpoints: Endpoint[] = Array.isArray(parsed.endpoints)
+            ? parsed.endpoints.filter((e: Endpoint) => projectIds.has(e.projectId))
+            : [];
+          const endpointIds = new Set(endpoints.map((e: Endpoint) => e.id));
+
+          // Clean up orphaned alerts, rules, logs, and insights whose parent project no longer exists
+          const alerts: Alert[] = Array.isArray(parsed.alerts)
+            ? parsed.alerts.filter((a: Alert) => projectIds.has(a.projectId))
+            : [];
+          const alertRules: AlertRule[] = Array.isArray(parsed.alertRules)
+            ? parsed.alertRules.filter((r: AlertRule) => projectIds.has(r.projectId))
+            : [];
+          const logs: RequestLog[] = Array.isArray(parsed.logs)
+            ? parsed.logs.filter((l: RequestLog) => (l.projectId && projectIds.has(l.projectId)) || (l.endpointId && endpointIds.has(l.endpointId)))
+            : [];
+          const aiInsights: AIInsight[] = Array.isArray(parsed.aiInsights)
+            ? parsed.aiInsights.filter((i: AIInsight) => !i.projectId || projectIds.has(i.projectId))
+            : [];
+
+          const cleanState = {
             users: Array.isArray(parsed.users) ? parsed.users : [],
-            projects: Array.isArray(parsed.projects) ? parsed.projects : [],
-            endpoints: Array.isArray(parsed.endpoints) ? parsed.endpoints : [],
-            alerts: Array.isArray(parsed.alerts) ? parsed.alerts : [],
-            alertRules: Array.isArray(parsed.alertRules) ? parsed.alertRules : [],
-            logs: Array.isArray(parsed.logs) ? parsed.logs : [],
+            projects,
+            endpoints,
+            alerts,
+            alertRules,
+            logs,
             testCases: Array.isArray(parsed.testCases) ? parsed.testCases : [],
             testResults: Array.isArray(parsed.testResults) ? parsed.testResults : [],
-            aiInsights: Array.isArray(parsed.aiInsights) ? parsed.aiInsights : [],
+            aiInsights,
           };
+
+          // If orphans were pruned, sync back to disk
+          if (alerts.length !== (parsed.alerts?.length || 0) || logs.length !== (parsed.logs?.length || 0)) {
+            this.persistSync(cleanState);
+          }
+
+          return cleanState;
         }
       }
     } catch (err) {

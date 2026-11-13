@@ -636,6 +636,34 @@ export default function ProjectDetailPage() {
                       </Button>
                     </Form.Item>
                   </Form>
+
+                  {/* Danger Zone: Move to Project History */}
+                  <div style={{ marginTop: 36, borderTop: '1px solid #fee2e2', paddingTop: 20 }}>
+                    <h4 style={{ color: '#ef4444', fontWeight: 600, margin: '0 0 6px' }}>Danger Zone</h4>
+                    <p style={{ color: '#64748b', fontSize: 13, marginBottom: 14 }}>
+                      Soft-deleting this project moves it to Project History and pauses live health monitoring for all associated endpoints. You can restore it anytime.
+                    </p>
+                    <Popconfirm
+                      title="Move to Project History?"
+                      description={`Move project "${project.name}" to Project History? Live checks will be paused.`}
+                      okText="Delete Project"
+                      okButtonProps={{ danger: true }}
+                      cancelText="Cancel"
+                      onConfirm={async () => {
+                        try {
+                          await projectsService.delete(project.id);
+                          message.success(`Project "${project.name}" moved to Project History`);
+                          navigate('/projects');
+                        } catch {
+                          message.error('Failed to delete project');
+                        }
+                      }}
+                    >
+                      <Button danger icon={<DeleteOutlined />}>
+                        Move to Project History
+                      </Button>
+                    </Popconfirm>
+                  </div>
                 </div>
               ),
             },

@@ -27,7 +27,16 @@ class MonitoringScheduler {
 
     try {
       const now = Date.now();
-      const activeEndpoints = db.endpoints.filter(e => e.status !== 'paused');
+      const activeProjectIds = new Set(
+        db.projects
+          .filter(p => p.status === 'active' && !p.deletedAt)
+          .map(p => p.id)
+      );
+
+      // Only monitor endpoints of active projects that are not paused
+      const activeEndpoints = db.endpoints.filter(
+        e => e.status !== 'paused' && activeProjectIds.has(e.projectId)
+      );
 
       for (const endpoint of activeEndpoints) {
         const lastCheckedMs = new Date(endpoint.lastChecked || 0).getTime();
@@ -46,7 +55,10 @@ class MonitoringScheduler {
 
   private async pingEndpoint(endpoint: Endpoint): Promise<void> {
     const project = db.projects.find(p => p.id === endpoint.projectId);
-    const targetUrl = project ? `${project.baseUrl}${endpoint.path}` : endpoint.path;
+    if (!project || project.status === 'deleted' || project.deletedAt) {
+      return; // Do not monitor endpoints of deleted projects
+    }
+    const targetUrl = `${project.baseUrl}${endpoint.path}`;
 
     const startTime = Date.now();
     let measuredRt = 0;

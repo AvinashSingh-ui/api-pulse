@@ -29,7 +29,7 @@ export interface RegisterCredentials {
 }
 
 // ── Projects ──────────────────────────────────────────────
-export type ProjectStatus = 'active' | 'inactive' | 'archived';
+export type ProjectStatus = 'active' | 'inactive' | 'archived' | 'deleted';
 
 export interface Project {
   id: string;
@@ -43,6 +43,8 @@ export interface Project {
   createdAt: string;
   updatedAt: string;
   tags: string[];
+  userId?: string;
+  deletedAt?: string | null;
 }
 
 // ── Endpoints ─────────────────────────────────────────────

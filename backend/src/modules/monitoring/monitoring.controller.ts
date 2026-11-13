@@ -3,12 +3,13 @@ import { db } from '../../db/store.js';
 import type { DashboardStats, MetricPoint, UptimeRecord } from '../../types/index.js';
 
 function generateTimeSeriesPoints(count: number, base: number, variance: number): MetricPoint[] {
+  if (base <= 0) return [];
   const points: MetricPoint[] = [];
   const now = Date.now();
   for (let i = count; i >= 0; i--) {
     points.push({
       timestamp: new Date(now - i * 3600_000).toISOString(),
-      value: base > 0 ? Math.max(0, Math.round(base + (Math.random() - 0.5) * variance * 2)) : 0,
+      value: Math.max(0, Math.round(base + (Math.random() - 0.5) * variance * 2)),
     });
   }
   return points;
@@ -16,31 +17,54 @@ function generateTimeSeriesPoints(count: number, base: number, variance: number)
 
 export const monitoringController = {
   getDashboardStats: (_req: Request, res: Response) => {
-    const endpoints = db.endpoints;
-    const totalEndpoints = endpoints.length;
-    const healthyEndpoints = endpoints.filter(e => e.status === 'healthy').length;
-    const degradedEndpoints = endpoints.filter(e => e.status === 'degraded').length;
-    const downEndpoints = endpoints.filter(e => e.status === 'down').length;
+    // 1. Identify active, non-deleted projects only
+    const activeProjects = db.projects.filter(p => p.status === 'active' && !p.deletedAt);
+    const activeProjectIds = new Set(activeProjects.map(p => p.id));
+    const totalProjects = activeProjects.length;
 
-    const totalProjects = db.projects.length;
-    const activeAlerts = db.alerts.filter(a => a.status === 'active').length;
+    // 2. Identify active endpoints belonging to active projects
+    const activeEndpoints = db.endpoints.filter(
+      e => activeProjectIds.has(e.projectId) && e.status !== 'paused'
+    );
+    const activeEndpointIds = new Set(activeEndpoints.map(e => e.id));
+    const totalEndpoints = activeEndpoints.length;
 
-    // Real calculations from real DB items
+    const healthyEndpoints = activeEndpoints.filter(e => e.status === 'healthy').length;
+    const degradedEndpoints = activeEndpoints.filter(e => e.status === 'degraded').length;
+    const downEndpoints = activeEndpoints.filter(e => e.status === 'down').length;
+
+    // 3. Identify active alerts belonging exclusively to active projects and active endpoints
+    const activeAlertsList = db.alerts.filter(
+      a =>
+        a.status === 'active' &&
+        activeProjectIds.has(a.projectId) &&
+        (!a.endpointId || activeEndpointIds.has(a.endpointId))
+    );
+    const activeAlerts = activeAlertsList.length;
+
+    // 4. Identify request logs belonging to active projects
+    const activeLogs = db.logs.filter(
+      l =>
+        (l.projectId && activeProjectIds.has(l.projectId)) ||
+        (l.endpointId && activeEndpointIds.has(l.endpointId))
+    );
+
+    // 5. Calculate real metrics from active records only
     const avgResponseTime = totalEndpoints > 0
-      ? Math.round(endpoints.reduce((acc, e) => acc + (e.responseTimeP50 || 0), 0) / totalEndpoints)
+      ? Math.round(activeEndpoints.reduce((acc, e) => acc + (e.responseTimeP50 || 0), 0) / totalEndpoints)
       : 0;
 
     const avgUptime = totalEndpoints > 0
-      ? Number((endpoints.reduce((acc, e) => acc + (e.uptime || 100), 0) / totalEndpoints).toFixed(2))
-      : 100;
+      ? Number((activeEndpoints.reduce((acc, e) => acc + (e.uptime ?? 100), 0) / totalEndpoints).toFixed(2))
+      : 0;
 
-    const errorCount = db.logs.filter(l => l.statusCode >= 400).length;
-    const errorRateToday = db.logs.length > 0
-      ? Number(((errorCount / db.logs.length) * 100).toFixed(2))
+    const errorCount = activeLogs.filter(l => l.statusCode >= 400).length;
+    const errorRateToday = activeLogs.length > 0
+      ? Number(((errorCount / activeLogs.length) * 100).toFixed(2))
       : 0;
 
     // Endpoints needing attention (degraded or down or error rate > 1%)
-    const needingAttention = endpoints
+    const needingAttention = activeEndpoints
       .filter(e => e.status === 'down' || e.status === 'degraded' || e.errorRate > 1)
       .map(e => ({
         endpointId: e.id,
@@ -53,8 +77,8 @@ export const monitoringController = {
       }));
 
     // Recent activity feed from real logs
-    const recentActivity = db.logs.slice(0, 10).map(log => {
-      const ep = db.endpoints.find(e => e.id === log.endpointId);
+    const recentActivity = activeLogs.slice(0, 10).map(log => {
+      const ep = activeEndpoints.find(e => e.id === log.endpointId);
       return {
         id: log.id,
         time: log.timestamp,
@@ -71,7 +95,7 @@ export const monitoringController = {
       avgUptime,
       avgResponseTime,
       activeAlerts,
-      requestsToday: db.logs.length,
+      requestsToday: activeLogs.length,
       errorRateToday,
       healthyEndpoints,
       degradedEndpoints,
@@ -105,7 +129,7 @@ export const monitoringController = {
   },
 
   getUptimeHistory: (req: Request, res: Response) => {
-    const days = parseInt(req.query.days as string || '90', 10);
+    const days = parseInt((req.query.days as string) || '90', 10);
     const records: UptimeRecord[] = [];
     const now = Date.now();
 
@@ -131,13 +155,31 @@ export const monitoringController = {
   },
 
   getOverviewTimeseries: (_req: Request, res: Response) => {
-    const baseRt = db.endpoints.length > 0
-      ? Math.round(db.endpoints.reduce((acc, e) => acc + (e.responseTimeP50 || 0), 0) / db.endpoints.length)
-      : 0;
+    const activeProjects = db.projects.filter(p => p.status === 'active' && !p.deletedAt);
+    const activeProjectIds = new Set(activeProjects.map(p => p.id));
+    const activeEndpoints = db.endpoints.filter(
+      e => activeProjectIds.has(e.projectId) && e.status !== 'paused'
+    );
+    const activeLogs = db.logs.filter(
+      l => l.projectId && activeProjectIds.has(l.projectId)
+    );
+
+    // If there are zero active endpoints, return empty timeseries so charts show clean empty states
+    if (activeEndpoints.length === 0) {
+      return res.json({
+        responseTime: [],
+        requestVolume: [],
+        errorRate: [],
+      });
+    }
+
+    const baseRt = Math.round(
+      activeEndpoints.reduce((acc, e) => acc + (e.responseTimeP50 || 0), 0) / activeEndpoints.length
+    );
 
     return res.json({
       responseTime: generateTimeSeriesPoints(24, baseRt, 10),
-      requestVolume: generateTimeSeriesPoints(24, db.logs.length, 5),
+      requestVolume: generateTimeSeriesPoints(24, Math.max(activeLogs.length, 1), 5),
       errorRate: generateTimeSeriesPoints(24, 0, 0),
     });
   },
