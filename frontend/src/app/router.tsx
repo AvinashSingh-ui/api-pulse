@@ -53,7 +53,8 @@ export default function AppRouter() {
       <Routes>
         {/* ── Public routes ── */}
         <Route element={<PublicRoute />}>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login"    element={<LoginPage />} />
+          <Route path="/register" element={<LoginPage />} />
         </Route>
 
         {/* ── Protected routes (wrapped in AppLayout) ── */}
