@@ -30,7 +30,7 @@ export interface Project {
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
-export type EndpointStatus = 'healthy' | 'degraded' | 'down' | 'unknown' | 'paused';
+export type EndpointStatus = 'healthy' | 'degraded' | 'down' | 'unhealthy' | 'unknown' | 'paused';
 
 export interface Endpoint {
   id: string;
@@ -39,6 +39,10 @@ export interface Endpoint {
   path: string;
   method: HttpMethod;
   status: EndpointStatus;
+  healthScore?: number; // 0 - 100
+  degradationReason?: string;
+  lastStatusCode?: number;
+  latencyThresholdMs?: number; // default 500
   interval: number; // in seconds, e.g. 15, 30, 60, 300
   expectedStatus: number; // default 200
   timeout: number; // in ms, default 5000
@@ -201,6 +205,8 @@ export interface TestResult {
 export interface DashboardStats {
   totalProjects: number;
   totalEndpoints: number;
+  avgHealthScore?: number;
+  avgAvailability?: number;
   avgUptime: number;
   avgResponseTime: number;
   activeAlerts: number;

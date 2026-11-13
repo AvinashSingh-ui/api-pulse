@@ -9,11 +9,12 @@ interface StatusBadgeProps {
 }
 
 const STATUS_MAP: Record<EndpointStatus, { color: string; label: string; badgeStatus: 'success' | 'warning' | 'error' | 'default' }> = {
-  healthy:  { color: 'success', label: 'Healthy',  badgeStatus: 'success' },
-  degraded: { color: 'warning', label: 'Degraded', badgeStatus: 'warning' },
-  down:     { color: 'error',   label: 'Down',     badgeStatus: 'error'   },
-  paused:   { color: 'default', label: 'Paused',   badgeStatus: 'default' },
-  unknown:  { color: 'default', label: 'Unknown',  badgeStatus: 'default' },
+  healthy:   { color: 'success', label: 'Healthy',   badgeStatus: 'success' },
+  degraded:  { color: 'warning', label: 'Degraded',  badgeStatus: 'warning' },
+  down:      { color: 'error',   label: 'Down',      badgeStatus: 'error'   },
+  unhealthy: { color: 'error',   label: 'Unhealthy', badgeStatus: 'error'   },
+  paused:    { color: 'default', label: 'Paused',    badgeStatus: 'default' },
+  unknown:   { color: 'default', label: 'Unknown',   badgeStatus: 'default' },
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, showDot = true, size = 'md' }) => {

@@ -67,11 +67,12 @@ export const getUptimeStatus = (pct: number): 'good' | 'warn' | 'critical' => {
 
 export const getStatusColor = (status: EndpointStatus): string => {
   const map: Record<EndpointStatus, string> = {
-    healthy:  '#22c55e',
-    degraded: '#f59e0b',
-    down:     '#ef4444',
-    paused:   '#94a3b8',
-    unknown:  '#94a3b8',
+    healthy:   '#22c55e',
+    degraded:  '#f59e0b',
+    down:      '#ef4444',
+    unhealthy: '#ef4444',
+    paused:    '#94a3b8',
+    unknown:   '#94a3b8',
   };
   return map[status];
 };

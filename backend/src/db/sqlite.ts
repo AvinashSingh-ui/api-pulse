@@ -81,6 +81,10 @@ export class SQLiteService {
         uptime REAL DEFAULT 100.0,
         requests_per_min INTEGER DEFAULT 0,
         error_rate REAL DEFAULT 0.0,
+        health_score INTEGER DEFAULT 100,
+        degradation_reason TEXT,
+        last_status_code INTEGER,
+        latency_threshold_ms INTEGER DEFAULT 500,
         last_checked TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
       );
@@ -139,6 +143,10 @@ export class SQLiteService {
     // Safe dynamic migration for existing databases
     try { this.db.exec('ALTER TABLE projects ADD COLUMN user_id TEXT'); } catch {}
     try { this.db.exec('ALTER TABLE projects ADD COLUMN deleted_at TEXT'); } catch {}
+    try { this.db.exec('ALTER TABLE endpoints ADD COLUMN health_score INTEGER DEFAULT 100'); } catch {}
+    try { this.db.exec('ALTER TABLE endpoints ADD COLUMN degradation_reason TEXT'); } catch {}
+    try { this.db.exec('ALTER TABLE endpoints ADD COLUMN last_status_code INTEGER'); } catch {}
+    try { this.db.exec('ALTER TABLE endpoints ADD COLUMN latency_threshold_ms INTEGER DEFAULT 500'); } catch {}
   }
 
   public query<T = any>(sql: string, params: any[] = []): T[] {

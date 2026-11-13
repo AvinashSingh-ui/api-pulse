@@ -9,6 +9,7 @@ import {
   CheckCircleOutlined, CloseCircleOutlined,
   ClockCircleOutlined, SettingOutlined, BugOutlined,
   FileTextOutlined, PlusOutlined, CopyOutlined, PlayCircleOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
@@ -147,8 +148,12 @@ export default function EndpointDetailPage() {
       setChecks(prev => [newCheck, ...prev]);
       setEndpoint(prev => prev ? ({
         ...prev,
-        responseTimeP50: measuredRt,
-        responseTimeP95: Math.round(measuredRt * 1.5),
+        responseTimeP50: res.responseTimeP50 ?? measuredRt,
+        responseTimeP95: res.responseTimeP95 ?? Math.round(measuredRt * 1.5),
+        healthScore: res.healthScore ?? prev.healthScore,
+        degradationReason: res.degradationReason,
+        uptime: res.uptime ?? prev.uptime,
+        lastStatusCode: res.statusCode,
         lastChecked: new Date().toISOString(),
         status: res.status as Endpoint['status'],
       }) : null);
@@ -290,6 +295,8 @@ export default function EndpointDetailPage() {
     },
   ];
 
+  const fullUrl = project ? (project.baseUrl.replace(/\/+$/, '') + (endpoint.path.startsWith('/') ? endpoint.path : `/${endpoint.path}`)) : endpoint.path;
+
   return (
     <div>
       <PageHeader
@@ -302,13 +309,17 @@ export default function EndpointDetailPage() {
           </div>
         }
         subtitle={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4, flexWrap: 'wrap' }}>
             <span>{endpoint.name}</span>
             {project && (
               <>
                 <span style={{ color: '#cbd5e1' }}>•</span>
                 <span style={{ color: '#64748b' }}>
                   Project: <a onClick={() => navigate(`/projects/${project.id}`)} style={{ color: '#4f8ef7', fontWeight: 600 }}>{project.name}</a>
+                </span>
+                <span style={{ color: '#cbd5e1' }}>•</span>
+                <span style={{ color: '#0958d9', fontFamily: 'monospace', fontSize: 12 }}>
+                  {fullUrl}
                 </span>
               </>
             )}
@@ -342,6 +353,12 @@ export default function EndpointDetailPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <StatusBadge status={endpoint.status} />
+            <Tag
+              color={(endpoint.healthScore ?? 100) >= 90 ? 'success' : (endpoint.healthScore ?? 100) >= 50 ? 'warning' : 'error'}
+              style={{ fontWeight: 600, padding: '2px 8px' }}
+            >
+              Health Score: {endpoint.healthScore ?? 100}/100
+            </Tag>
             <span style={{ fontSize: 12, color: '#64748b' }}>
               Last checked: <strong>{fromNow(endpoint.lastChecked)}</strong>
             </span>
@@ -352,28 +369,56 @@ export default function EndpointDetailPage() {
             </div>
           </div>
 
-          <Button
-            size="small"
-            icon={<CopyOutlined />}
-            onClick={() => {
-              navigator.clipboard.writeText(endpoint.path);
-              message.success('Route path copied!');
-            }}
-          >
-            Copy Route
-          </Button>
+          <Space>
+            <Button
+              size="small"
+              icon={<CopyOutlined />}
+              onClick={() => {
+                navigator.clipboard.writeText(fullUrl);
+                message.success('Full URL copied to clipboard!');
+              }}
+            >
+              Copy Full URL
+            </Button>
+            <Button
+              size="small"
+              icon={<CopyOutlined />}
+              onClick={() => {
+                navigator.clipboard.writeText(endpoint.path);
+                message.success('Route path copied!');
+              }}
+            >
+              Copy Route
+            </Button>
+          </Space>
         </div>
+
+        {endpoint.degradationReason && (
+          <div style={{ marginTop: 12, padding: '8px 12px', background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 8, fontSize: 13, color: '#d46b08', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <InfoCircleOutlined />
+            <span>Health Status Detail: <strong>{endpoint.degradationReason}</strong></span>
+          </div>
+        )}
       </Card>
 
       {/* Key Metric Stat Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={12} sm={8} lg={4}>
           <StatCard
+            title="API Health Score"
+            value={`${endpoint.healthScore ?? 100}/100`}
+            icon={<CheckCircleOutlined />}
+            color={(endpoint.healthScore ?? 100) >= 90 ? '#22c55e' : (endpoint.healthScore ?? 100) >= 50 ? '#f59e0b' : '#ef4444'}
+            subtitle={(endpoint.healthScore ?? 100) >= 90 ? 'Healthy (≥90)' : (endpoint.healthScore ?? 100) >= 50 ? 'Degraded (50-89)' : 'Unhealthy (<50)'}
+          />
+        </Col>
+        <Col xs={12} sm={8} lg={4}>
+          <StatCard
             title="Uptime (24h)"
             value={`${endpoint.uptime || 100}%`}
             icon={<CheckCircleOutlined />}
             color="#22c55e"
-            subtitle="Target: 99.9%"
+            subtitle="Historical checks"
           />
         </Col>
         <Col xs={12} sm={8} lg={4}>
@@ -410,15 +455,6 @@ export default function EndpointDetailPage() {
             icon={<BugOutlined />}
             color={endpoint.errorRate > 1 ? '#ef4444' : '#22c55e'}
             subtitle="Last 24 hours"
-          />
-        </Col>
-        <Col xs={12} sm={8} lg={4}>
-          <StatCard
-            title="Traffic Volume"
-            value={`${endpoint.requestsPerMin || 0}`}
-            icon={<PlayCircleOutlined />}
-            color="#8b5cf6"
-            subtitle="Requests / minute"
           />
         </Col>
       </Row>

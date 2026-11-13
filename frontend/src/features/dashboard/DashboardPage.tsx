@@ -3,7 +3,7 @@ import { Row, Col, Card, Table, Tag, Button, Empty, Space } from 'antd';
 import {
   FolderOutlined, ApiOutlined, RiseOutlined, ThunderboltOutlined,
   BellOutlined, BarChartOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
-  PlusOutlined, HistoryOutlined,
+  PlusOutlined, HistoryOutlined, SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader }              from '@/components/common/PageHeader';
@@ -81,6 +81,8 @@ export default function DashboardPage() {
   const downEndpoints = stats?.downEndpoints ?? 0;
   const activeAlerts = stats?.activeAlerts ?? 0;
   const avgUptime = stats?.avgUptime ?? 0;
+  const avgHealthScore = stats?.avgHealthScore ?? (totalEndpoints > 0 ? 100 : 0);
+  const avgAvailability = stats?.avgAvailability ?? (totalEndpoints > 0 ? Number(((healthyEndpoints / totalEndpoints) * 100).toFixed(1)) : 0);
   const avgResponseTime = stats?.avgResponseTime ?? 0;
   const requestsToday = stats?.requestsToday ?? 0;
   const errorRateToday = stats?.errorRateToday ?? 0;
@@ -237,6 +239,36 @@ export default function DashboardPage() {
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         {[
           {
+            title: 'API Health Score',
+            value: totalEndpoints > 0 ? `${avgHealthScore}/100` : 'N/A',
+            icon: <SafetyCertificateOutlined />,
+            color: avgHealthScore >= 90 ? '#22c55e' : avgHealthScore >= 50 ? '#f59e0b' : '#ef4444',
+            subtitle: totalEndpoints > 0
+              ? (avgHealthScore >= 90 ? 'Healthy (≥90)' : avgHealthScore >= 50 ? 'Degraded (50-89)' : 'Unhealthy (<50)')
+              : 'Awaiting routes',
+          },
+          {
+            title: 'Avg Uptime',
+            value: totalEndpoints > 0 ? `${avgUptime}%` : 'N/A',
+            icon: <RiseOutlined />,
+            color: '#22c55e',
+            subtitle: totalEndpoints > 0 ? 'Historical checks' : 'Awaiting endpoints',
+          },
+          {
+            title: 'Availability',
+            value: totalEndpoints > 0 ? `${avgAvailability}%` : 'N/A',
+            icon: <CheckCircleOutlined />,
+            color: avgAvailability >= 95 ? '#22c55e' : '#f59e0b',
+            subtitle: totalEndpoints > 0 ? `${healthyEndpoints}/${totalEndpoints} operational` : 'No routes',
+          },
+          {
+            title: 'Avg Response Time',
+            value: totalEndpoints > 0 ? `${avgResponseTime}ms` : 'N/A',
+            icon: <ThunderboltOutlined />,
+            color: '#f59e0b',
+            subtitle: totalEndpoints > 0 ? 'P50 median' : 'Awaiting traffic',
+          },
+          {
             title: 'Total Projects',
             value: totalProjects.toString(),
             icon: <FolderOutlined />,
@@ -251,20 +283,6 @@ export default function DashboardPage() {
             subtitle: totalEndpoints === 0 ? 'No active endpoints' : `${healthyEndpoints} healthy`,
           },
           {
-            title: 'Avg Uptime',
-            value: totalEndpoints > 0 ? `${avgUptime}%` : 'N/A',
-            icon: <RiseOutlined />,
-            color: '#22c55e',
-            subtitle: totalEndpoints > 0 ? 'Active routes' : 'Awaiting endpoints',
-          },
-          {
-            title: 'Avg Response Time',
-            value: totalEndpoints > 0 ? `${avgResponseTime}ms` : 'N/A',
-            icon: <ThunderboltOutlined />,
-            color: '#f59e0b',
-            subtitle: totalEndpoints > 0 ? 'P50 median' : 'Awaiting traffic',
-          },
-          {
             title: 'Active Alerts',
             value: totalProjects > 0 ? activeAlerts.toString() : '0',
             icon: <BellOutlined />,
@@ -277,20 +295,6 @@ export default function DashboardPage() {
             icon: <BarChartOutlined />,
             color: '#00d4aa',
             subtitle: 'Active telemetry logs',
-          },
-          {
-            title: 'Error Rate',
-            value: totalEndpoints > 0 && requestsToday > 0 ? `${errorRateToday.toFixed(1)}%` : 'N/A',
-            icon: <ExclamationCircleOutlined />,
-            color: errorRateToday > 5 ? '#ef4444' : errorRateToday > 1 ? '#f97316' : '#22c55e',
-            subtitle: totalEndpoints > 0 && requestsToday > 0 ? 'Last 24 hours' : 'No errors logged',
-          },
-          {
-            title: 'Healthy Endpoints',
-            value: totalEndpoints > 0 ? `${healthyEndpoints}/${totalEndpoints}` : '0/0',
-            icon: <CheckCircleOutlined />,
-            color: '#22c55e',
-            subtitle: totalEndpoints > 0 ? `${Math.round((healthyEndpoints / totalEndpoints) * 100)}% operational` : 'No endpoints',
           },
         ].map((s, i) => (
           <Col key={i} xs={24} sm={12} md={8} lg={6}>

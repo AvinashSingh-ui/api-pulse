@@ -58,6 +58,14 @@ export const monitoringController = {
       ? Number((activeEndpoints.reduce((acc, e) => acc + (e.uptime ?? 100), 0) / totalEndpoints).toFixed(2))
       : 0;
 
+    const avgHealthScore = totalEndpoints > 0
+      ? Math.round(activeEndpoints.reduce((acc, e) => acc + (e.healthScore ?? 100), 0) / totalEndpoints)
+      : 0;
+
+    const avgAvailability = totalEndpoints > 0
+      ? Number(((healthyEndpoints / totalEndpoints) * 100).toFixed(1))
+      : 0;
+
     const errorCount = activeLogs.filter(l => l.statusCode >= 400).length;
     const errorRateToday = activeLogs.length > 0
       ? Number(((errorCount / activeLogs.length) * 100).toFixed(2))
@@ -92,6 +100,8 @@ export const monitoringController = {
     const stats: DashboardStats = {
       totalProjects,
       totalEndpoints,
+      avgHealthScore,
+      avgAvailability,
       avgUptime,
       avgResponseTime,
       activeAlerts,

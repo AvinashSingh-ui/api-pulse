@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS endpoints (
   uptime NUMERIC(5,2) DEFAULT 100.0,
   requests_per_min INT DEFAULT 0,
   error_rate NUMERIC(5,2) DEFAULT 0.0,
+  health_score INT DEFAULT 100,
+  degradation_reason TEXT,
+  last_status_code INT,
+  latency_threshold_ms INT DEFAULT 500,
   last_checked TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   tags TEXT[] DEFAULT '{}',
   assertions JSONB DEFAULT '[]'::jsonb

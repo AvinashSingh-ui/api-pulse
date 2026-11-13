@@ -22,9 +22,15 @@ export const endpointsService = {
       status: string;
       responseTime: number;
       statusCode?: number;
+      healthScore?: number;
+      degradationReason?: string;
+      uptime?: number;
+      responseTimeP50?: number;
+      responseTimeP95?: number;
       failureType?: string;
       error?: string;
       alert?: Alert;
       aiInsight?: AIInsight;
+      endpoint?: Endpoint;
     }>(`/endpoints/${id}/check`).then(r => r.data),
 };
