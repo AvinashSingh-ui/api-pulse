@@ -89,3 +89,4 @@ export function playNotificationSound(type: 'critical' | 'warning' | 'success'):
     // Non-blocking safe catch
   }
 }
+

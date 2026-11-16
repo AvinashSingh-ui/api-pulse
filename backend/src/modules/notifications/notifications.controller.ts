@@ -171,3 +171,4 @@ export const notificationsController = {
     return res.json({ success: true, message: `Cleared ${count} notification(s)` });
   },
 };
+

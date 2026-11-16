@@ -16,7 +16,7 @@ export const notificationService = {
     severity: NotificationSeverity;
     type: NotificationType;
     metadata?: AppNotification['metadata'];
-  }): AppNotification | null {
+  }): AppNotification {
     const { projectId, endpointId, title, message, severity, type, metadata = {} } = params;
 
     // Look up project and endpoint details for context
@@ -34,8 +34,7 @@ export const notificationService = {
              new Date(n.createdAt).getTime() > fifteenMinsAgo
       );
       if (existing) {
-        // Prevent duplicate alerts for the same ongoing incident
-        return null;
+        return existing;
       }
     }
 
@@ -126,11 +125,6 @@ export const notificationService = {
   }): AppNotification | null {
     const { endpoint, prevStatus, newStatus, statusCode, responseTime, healthScore, degradationReason, failureType } = params;
 
-    // Ongoing incident deduplication: don't create repeat alerts if status hasn't changed
-    if (prevStatus === newStatus) {
-      return null;
-    }
-
     const metadata = {
       statusCode,
       responseTime,
@@ -187,3 +181,4 @@ export const notificationService = {
     return null;
   },
 };
+

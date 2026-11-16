@@ -11,3 +11,4 @@ router.delete('/:id', notificationsController.delete);
 router.delete('/', notificationsController.clearAll);
 
 export default router;
+
