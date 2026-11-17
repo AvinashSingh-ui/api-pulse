@@ -25,7 +25,7 @@ try {
   db.exec('DELETE FROM projects;');
   db.exec('DELETE FROM users;');
   db.close();
-  console.log('✅ CLEANED: database.json and apipulse.db are now completely clean!');
+  console.log('[CLEANED] database.json and apipulse.db are now clean.');
 } catch (e) {
   console.error('Error wiping SQLite:', e.message);
 }
@@ -43,7 +43,7 @@ try {
   await client.query('TRUNCATE TABLE request_logs, alerts, alert_rules, endpoints, projects, users CASCADE;');
   client.release();
   await pool.end();
-  console.log('✅ CLEANED: PostgreSQL tables completely truncated!');
+  console.log('[CLEANED] PostgreSQL tables truncated.');
 } catch (e) {
-  console.log('ℹ️ Postgres truncation skipped:', e.message);
+  console.log('[Postgres] Postgres truncation skipped:', e.message);
 }

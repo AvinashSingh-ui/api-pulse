@@ -1,11 +1,11 @@
-# 🚀 API Pulse – Backend Architecture & Server
+# API Pulse – Backend Architecture & Server
 
 > **Enterprise Intelligent API Observability & Monitoring Backend**  
 > Engineered with Node.js, Express.js, TypeScript, OpenAPI 3.0, Background Health Scheduler, and AI Root-Cause Analysis.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 - **Runtime:** Node.js (v24+)
 - **Framework:** Express.js (v4.21)
 - **Language:** TypeScript 5.7 (Strict mode, ES2022)
@@ -18,7 +18,7 @@
 
 ---
 
-## 📁 Directory Structure
+## Directory Structure
 ```text
 c:/API_PULSE/backend/
 ├── src/
@@ -26,6 +26,9 @@ c:/API_PULSE/backend/
 │   ├── app.ts                    # Express app configuration & middleware
 │   ├── config/index.ts           # Environment variables & constants
 │   ├── db/
+│   │   ├── postgres.ts           # PostgreSQL production connection pool
+│   │   ├── sqlite.ts             # Embedded SQLite database service
+│   │   ├── schema.sql            # PostgreSQL schema & indexes
 │   │   └── store.ts              # In-memory + persisted JSON data store with seed data
 │   ├── types/index.ts            # Strict TypeScript domain interfaces
 │   ├── middlewares/
@@ -38,21 +41,28 @@ c:/API_PULSE/backend/
 │       ├── projects/             # Multi-project CRUD & stats sync
 │       ├── endpoints/            # Route registration & Instant Ping (checkNow)
 │       ├── monitoring/           # Dashboard KPIs, P50/P95 latencies, Scheduler
+│       ├── notifications/        # Intelligent health transitions, alert deduplication
 │       ├── logs/                 # Request logs & sensitive data redaction
 │       ├── alerts/               # Alert threshold engine, Acknowledge & Resolve
 │       ├── ai/                   # AI Root-Cause diagnosis & diagnostic chat
 │       ├── testing/              # Automated test suites & assertion runner
 │       └── openapi/              # OpenAPI/Swagger file/URL parser & Sync Plan
 ├── data/
-│   └── database.json             # Seed and runtime database
-├── test-controllers.ts           # End-to-end controller test suite
+│   └── apipulse.db               # Embedded SQLite database
+├── scripts/
+│   ├── test-controllers.ts       # End-to-end controller test suite
+│   ├── test-intelligent-notifications.ts # Health transitions, deduplication, auto-recovery
+│   ├── test-endpoints-health-scoring.ts   # URL construction, P50/P95, telemetry tests
+│   ├── test-project-lifecycle.ts # Project lifecycle, soft-delete, restore tests
+│   ├── test-ai-fix-inprocess.ts  # AI Root-Cause and code fix tests
+│   └── wipe-data.js              # Database cleanup utility
 ├── package.json
 └── tsconfig.json
 ```
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### 1. Install Dependencies
 ```bash
@@ -76,7 +86,7 @@ npm test
 
 ---
 
-## 📡 API Endpoint Reference
+## API Endpoint Reference
 
 | Module | Method | Route | Description |
 |---|---|---|---|
@@ -92,6 +102,10 @@ npm test
 | **Endpoints** | `GET` | `/api/v1/endpoints` | List endpoints (filter by method, status, project) |
 | **Endpoints** | `POST` | `/api/v1/endpoints` | Register a new monitored route |
 | **Endpoints** | `POST` | `/api/v1/endpoints/:id/check` | Trigger instant ping / health check execution |
+| **Notifications** | `GET` | `/api/v1/notifications` | List notifications with severity filters |
+| **Notifications** | `GET` | `/api/v1/notifications/unread-count` | Unread notification count |
+| **Notifications** | `PATCH` | `/api/v1/notifications/:id/read` | Mark notification as read |
+| **Notifications** | `POST` | `/api/v1/notifications/read-all` | Mark all notifications as read |
 | **Monitoring** | `GET` | `/api/v1/monitoring/stats` | Dashboard KPI stats, needing attention routes |
 | **Monitoring** | `GET` | `/api/v1/monitoring/endpoints/:id` | Endpoint latency & request volume timeseries |
 | **Logs** | `GET` | `/api/v1/logs` | Query request logs with sensitive header redaction |

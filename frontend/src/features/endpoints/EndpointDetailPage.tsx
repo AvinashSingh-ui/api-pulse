@@ -161,7 +161,7 @@ export default function EndpointDetailPage() {
       const isDegradedOrDown = res.status === 'down' || res.status === 'degraded' || (res.statusCode && res.statusCode >= 400);
       if (isDegradedOrDown) {
         notification.error({
-          message: `🚨 Health Issue Detected: ${res.status.toUpperCase()}`,
+          message: `Health Issue Detected: ${res.status.toUpperCase()}`,
           description: `Endpoint returned HTTP ${res.statusCode || 'Error'} in ${measuredRt}ms. ${res.error || ''} Moving directly to Alert & AI Fix...`,
           duration: 3,
         });

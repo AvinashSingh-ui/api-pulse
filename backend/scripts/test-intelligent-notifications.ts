@@ -30,7 +30,7 @@ function createMockReqRes(user: any = null, body: any = {}, query: any = {}, par
 }
 
 async function runTestSuite() {
-  console.log('🧪 Starting API Pulse Intelligent Alerts & Notification System Test Suite...\n');
+  console.log('Starting API Pulse Intelligent Alerts & Notification System Test Suite...\n');
 
   let passed = 0;
   let total = 0;
@@ -38,10 +38,10 @@ async function runTestSuite() {
   function assert(condition: boolean, testName: string, details?: any) {
     total++;
     if (condition) {
-      console.log(`✅ [PASS ${total}] ${testName}`);
+      console.log(`[PASS ${total}] ${testName}`);
       passed++;
     } else {
-      console.error(`❌ [FAIL ${total}] ${testName}`, details || '');
+      console.error(`[FAIL ${total}] ${testName}`, details || '');
       throw new Error(`Assertion failed: ${testName}`);
     }
   }
@@ -75,6 +75,10 @@ async function runTestSuite() {
   await endpointsController.create(endpointSetup.req, endpointSetup.res);
   const endpoint = endpointSetup.getResult().data?.data || endpointSetup.getResult().data;
   assert(endpoint && endpoint.id, 'Test endpoint created successfully', endpoint);
+
+  // Clear prior test run notifications to ensure pristine test baseline
+  const resetNotifs = createMockReqRes(testUser);
+  await notificationsController.clearAll(resetNotifs.req, resetNotifs.res);
 
   // ==========================================
   // SECTION 1: Automatic API Health Detection & Alerts
@@ -238,10 +242,10 @@ async function runTestSuite() {
   const cleanupReqRes = createMockReqRes(testUser, {}, {}, { id: project.id });
   await projectsController.delete(cleanupReqRes.req, cleanupReqRes.res);
 
-  console.log(`\n🎉 All ${passed}/${total} Intelligent Alerts & Notification System tests passed successfully!\n`);
+  console.log(`\nAll ${passed}/${total} Intelligent Alerts & Notification System tests passed successfully!\n`);
 }
 
 runTestSuite().catch(err => {
-  console.error('\n❌ Test suite execution failed:', err);
+  console.error('\nTest suite execution failed:', err);
   process.exit(1);
 });

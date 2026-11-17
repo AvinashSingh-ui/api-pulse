@@ -622,7 +622,7 @@ export default function AlertsPage() {
         <Tabs defaultActiveKey="active" items={tabItems} />
       </Card>
 
-      {/* 🤖 AI Incident Diagnosis & Resolution Drawer */}
+      {/* AI Incident Diagnosis & Resolution Drawer */}
       <Drawer
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -670,7 +670,7 @@ export default function AlertsPage() {
               loading={reTesting}
               onClick={handleReTestEndpoint}
             >
-              ⚡ Re-Test API Now
+              Re-Test API Now
             </Button>
 
             <Space>

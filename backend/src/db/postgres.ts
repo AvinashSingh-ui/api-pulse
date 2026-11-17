@@ -40,7 +40,7 @@ export class PostgresService {
 
     try {
       const client = await this.pool.connect();
-      console.log('✅ [Postgres] Successfully connected to PostgreSQL production database!');
+      console.log('[Postgres] Successfully connected to PostgreSQL production database.');
       this.isConnected = true;
 
       // Run schema migrations if schema.sql exists
@@ -48,15 +48,15 @@ export class PostgresService {
       if (fs.existsSync(schemaPath)) {
         const sql = fs.readFileSync(schemaPath, 'utf-8');
         await client.query(sql);
-        console.log('📦 [Postgres] Database schema and indexes verified / migrated.');
+        console.log('[Postgres] Database schema and indexes verified / migrated.');
       }
 
       client.release();
       return true;
     } catch (err: any) {
       this.isConnected = false;
-      console.log(`ℹ️ [Postgres] PostgreSQL not detected on localhost:5432 (${err.message}). Using high-performance in-memory persistence layer.`);
-      console.log(`💡 [Postgres] Run "docker compose up -d" in the backend directory to spin up PostgreSQL + pgAdmin.`);
+      console.log(`[Postgres] PostgreSQL not detected on localhost:5432 (${err.message}). Using SQLite / in-memory storage.`);
+      console.log(`[Postgres] Optional: run "docker compose up -d" to spin up PostgreSQL container.`);
       return false;
     }
   }

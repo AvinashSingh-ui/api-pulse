@@ -14,7 +14,7 @@ import {
   Empty,
   message,
 } from 'antd';
-import { SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
+import { SearchOutlined, ReloadOutlined, DownloadOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { PageHeader }    from '@/components/common/PageHeader';
 import { StatCard }      from '@/components/common/StatCard';
@@ -265,7 +265,7 @@ export default function LogsPage() {
                 <strong>No Request Logs Recorded</strong>
                 <br />
                 <span style={{ color: '#64748b' }}>
-                  Logs are recorded automatically whenever endpoints are checked via Ping (⚡) or monitored live.
+                  Logs are recorded automatically whenever endpoints are checked via Run Check <ThunderboltOutlined style={{ color: '#0958d9', margin: '0 2px' }} /> or monitored live.
                 </span>
               </span>
             }

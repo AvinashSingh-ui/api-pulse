@@ -26,6 +26,7 @@ import {
   MinusCircleOutlined,
   ReloadOutlined,
   RobotOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader }    from '@/components/common/PageHeader';
@@ -523,8 +524,9 @@ export default function TestingPage() {
                             >
                               {testResult.status}
                             </Tag>
-                            <span style={{ fontSize: 12, color: '#64748b' }}>
-                              ⏱ {testResult.time}ms
+                            <span style={{ fontSize: 12, color: '#64748b', display: 'inline-flex', alignItems: 'center' }}>
+                              <ClockCircleOutlined style={{ marginRight: 4 }} />
+                              {testResult.time}ms
                             </span>
                             <Tag color={testResult.passed ? 'success' : 'error'}>
                               {testResult.passed ? 'ASSERTIONS PASSED' : 'ASSERTIONS FAILED'}

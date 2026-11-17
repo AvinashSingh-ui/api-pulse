@@ -29,7 +29,7 @@ function createMockReqRes(user: any = null, body: any = {}, query: any = {}, par
 }
 
 async function runTestSuite() {
-  console.log('🧪 Starting API Pulse Endpoints & Health Scoring Automated Test Suite...\n');
+  console.log('Starting API Pulse Endpoints & Health Scoring Automated Test Suite...\n');
 
   let passed = 0;
   let total = 0;
@@ -37,10 +37,10 @@ async function runTestSuite() {
   function assert(condition: boolean, testName: string, details?: any) {
     total++;
     if (condition) {
-      console.log(`✅ [PASS ${total}] ${testName}`);
+      console.log(`[PASS ${total}] ${testName}`);
       passed++;
     } else {
-      console.error(`❌ [FAIL ${total}] ${testName}`, details || '');
+      console.error(`[FAIL ${total}] ${testName}`, details || '');
       throw new Error(`Assertion failed: ${testName}`);
     }
   }
@@ -282,12 +282,12 @@ async function runTestSuite() {
   projectsController.permanentDelete(createMockReqRes(testUser, {}, {}, { id: proj.id }).req, createMockReqRes().res);
 
   console.log(`\n==========================================`);
-  console.log(`🎉 ALL ${passed}/${total} TESTS PASSED SUCCESSFULLY!`);
+  console.log(`ALL ${passed}/${total} TESTS PASSED SUCCESSFULLY!`);
   console.log(`==========================================\n`);
 }
 
 runTestSuite().catch(err => {
-  console.error('❌ Test suite failed:', err);
+  console.error('Test suite failed:', err);
   process.exit(1);
 });
 

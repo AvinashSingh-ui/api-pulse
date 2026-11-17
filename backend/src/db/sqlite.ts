@@ -23,7 +23,7 @@ export class SQLiteService {
       this.db = new DatabaseSync(DB_FILE);
       this.isConnected = true;
       this.migrate();
-      console.log(`✅ [SQLite] Connected to Real SQL Database at ${DB_FILE}`);
+      console.log(`[SQLite] Connected to database at ${DB_FILE}`);
     } catch (err: any) {
       console.warn('[SQLite] Fallback to in-memory SQLite:', err.message);
       try {

@@ -30,7 +30,7 @@ function createMockReqRes(body: any = {}, query: any = {}, params: any = {}, hea
 }
 
 async function verify() {
-  console.log('🧪 Verifying Automated Alert Generation & AI Fix Flow In-Process...\n');
+  console.log('Verifying Automated Alert Generation & AI Fix Flow In-Process...\n');
 
   // 1. Create a project
   const pReq = createMockReqRes({
@@ -105,11 +105,11 @@ async function verify() {
     throw new Error('Alert not found in active alerts');
   }
 
-  console.log('\n🎉 ALL VERIFICATIONS PASSED! System automatically captures errors, creates real incidents, diagnoses root-causes with AI, and delivers actionable code fixes.');
+  console.log('\nAll verifications passed. System automatically captures errors, creates real incidents, diagnoses root-causes with AI, and delivers actionable code fixes.');
 }
 
 verify().catch(err => {
-  console.error('❌ Verification failed:', err);
+  console.error('Verification failed:', err);
   process.exit(1);
 });
 

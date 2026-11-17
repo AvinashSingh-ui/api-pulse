@@ -16,7 +16,7 @@ export const notificationService = {
     severity: NotificationSeverity;
     type: NotificationType;
     metadata?: AppNotification['metadata'];
-  }): AppNotification {
+  }): AppNotification | null {
     const { projectId, endpointId, title, message, severity, type, metadata = {} } = params;
 
     // Look up project and endpoint details for context
@@ -34,7 +34,7 @@ export const notificationService = {
              new Date(n.createdAt).getTime() > fifteenMinsAgo
       );
       if (existing) {
-        return existing;
+        return null;
       }
     }
 
@@ -125,6 +125,11 @@ export const notificationService = {
   }): AppNotification | null {
     const { endpoint, prevStatus, newStatus, statusCode, responseTime, healthScore, degradationReason, failureType } = params;
 
+    // Ongoing incident deduplication: don't create repeat alerts if status hasn't changed
+    if (prevStatus === newStatus) {
+      return null;
+    }
+
     const metadata = {
       statusCode,
       responseTime,
@@ -138,7 +143,7 @@ export const notificationService = {
       return this.createNotification({
         projectId: endpoint.projectId,
         endpointId: endpoint.id,
-        title: `🚨 Outage Detected: ${endpoint.method} ${endpoint.path} is Unhealthy`,
+        title: `Outage Detected: ${endpoint.method} ${endpoint.path} is Unhealthy`,
         message: degradationReason || `Health check failed with HTTP ${statusCode} (${responseTime}ms). API is currently unavailable or returning errors.`,
         severity: 'critical',
         type: 'unhealthy',
@@ -151,7 +156,7 @@ export const notificationService = {
       return this.createNotification({
         projectId: endpoint.projectId,
         endpointId: endpoint.id,
-        title: `⚠️ Performance Degraded: ${endpoint.method} ${endpoint.path}`,
+        title: `Performance Degraded: ${endpoint.method} ${endpoint.path}`,
         message: degradationReason || `Health score dropped to ${healthScore}/100. Latency is ${responseTime}ms.`,
         severity: 'warning',
         type: 'degraded',
@@ -170,7 +175,7 @@ export const notificationService = {
       return this.createNotification({
         projectId: endpoint.projectId,
         endpointId: endpoint.id,
-        title: `✅ API Recovered: ${endpoint.method} ${endpoint.path} is Healthy`,
+        title: `API Recovered: ${endpoint.method} ${endpoint.path} is Healthy`,
         message: `Endpoint has recovered and is operating normally with optimal response time (${responseTime}ms). Health score restored to ${healthScore}/100.`,
         severity: 'success',
         type: 'recovered',

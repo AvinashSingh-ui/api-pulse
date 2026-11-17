@@ -319,7 +319,7 @@ Provide a concise, practical, technical answer with root causes and fixes.`
         `- **Degraded:** ${degraded}\n` +
         `- **Down:** ${down}\n` +
         `- **Active Alerts:** ${alerts}\n\n` +
-        (alerts > 0 ? `⚠️ There are ${alerts} active alerts requiring attention. Check the Alerts tab for resolution.` : `✅ All monitored APIs are currently operating within target thresholds!`);
+        (alerts > 0 ? `There are ${alerts} active alerts requiring attention. Check the Alerts tab for resolution.` : `All monitored APIs are currently operating within target thresholds.`);
     } else {
       reply = `I am analyzing your API Pulse telemetry data. For **"${message}"**, I recommend checking the **Request Logs** tab to inspect status code distributions and verify your alert rule thresholds in the **Alerts** module. If you need root cause analysis on a specific endpoint, click "Analyze with AI" directly on that route.`;
     }

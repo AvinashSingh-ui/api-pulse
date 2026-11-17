@@ -149,7 +149,7 @@ export const authController = {
           'INSERT OR REPLACE INTO users (id, name, email, password_hash, role, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [newUser.id, newUser.name, newUser.email, newUser.password, newUser.role, newUser.avatar, newUser.createdAt]
         );
-        console.log(`💾 [DB] User "${newUser.email}" permanently saved to Real SQL Database table "users".`);
+        console.log(`[DB] User "${newUser.email}" saved to users table.`);
       } catch (err: any) {
         console.warn('[DB] SQLite insert warning:', err.message);
       }
@@ -162,7 +162,7 @@ export const authController = {
           'INSERT INTO users (id, name, email, password_hash, role, avatar, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (email) DO UPDATE SET password_hash = $4, name = $2',
           [newUser.id, newUser.name, newUser.email, newUser.password, newUser.role, newUser.avatar, newUser.createdAt]
         );
-        console.log(`🐘 [Postgres] User "${newUser.email}" saved to PostgreSQL "users" table.`);
+        console.log(`[Postgres] User "${newUser.email}" saved to PostgreSQL users table.`);
       } catch (err: any) {
         console.warn('[Postgres] Insert error:', err.message);
       }

@@ -3,7 +3,7 @@ import { Form, Input, Button, Checkbox, Alert, Tabs, Select, Modal, Space, Typog
 import {
   LockOutlined, MailOutlined, UserOutlined, SafetyOutlined,
   DashboardOutlined, ApiOutlined, CheckCircleOutlined,
-  EyeOutlined, EyeInvisibleOutlined,
+  EyeOutlined, EyeInvisibleOutlined, ArrowRightOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
@@ -369,10 +369,11 @@ export default function LoginPage() {
                       <Button
                         type="link"
                         size="small"
+                        icon={<ArrowRightOutlined />}
                         style={{ padding: 0, fontWeight: 600 }}
                         onClick={() => switchTab('register')}
                       >
-                        👉 Click here to create an account now
+                        Click here to create an account now
                       </Button>
                     </div>
                   ) : null}

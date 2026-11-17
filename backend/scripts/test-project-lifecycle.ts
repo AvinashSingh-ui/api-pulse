@@ -30,7 +30,7 @@ function createMockReqRes(user: any = null, body: any = {}, query: any = {}, par
 }
 
 async function runTests() {
-  console.log('🧪 Starting API Pulse Project Lifecycle & Dashboard Consistency Tests...\n');
+  console.log('Starting API Pulse Project Lifecycle & Dashboard Consistency Tests...\n');
 
   const testUser = {
     id: 'user_test_lifecycle_' + Date.now(),
@@ -45,10 +45,10 @@ async function runTests() {
   function assert(condition: boolean, testName: string, details?: any) {
     total++;
     if (condition) {
-      console.log(`✅ [PASS ${total}] ${testName}`);
+      console.log(`[PASS ${total}] ${testName}`);
       passed++;
     } else {
-      console.error(`❌ [FAIL ${total}] ${testName}`, details || '');
+      console.error(`[FAIL ${total}] ${testName}`, details || '');
       throw new Error(`Assertion failed: ${testName}`);
     }
   }
@@ -227,11 +227,11 @@ async function runTests() {
   assert(!db.logs.some(l => l.projectId === createdProj.id), 'Associated logs permanently removed');
 
   console.log(`\n==========================================`);
-  console.log(`🎉 ALL ${passed}/${total} TESTS PASSED SUCCESSFULLY!`);
+  console.log(`ALL ${passed}/${total} TESTS PASSED SUCCESSFULLY!`);
   console.log(`==========================================\n`);
 }
 
 runTests().catch(err => {
-  console.error('❌ Test suite failed:', err);
+  console.error('Test suite failed:', err);
   process.exit(1);
 });
