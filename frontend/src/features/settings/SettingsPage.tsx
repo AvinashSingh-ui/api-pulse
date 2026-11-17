@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   Tabs, Card, Form, Input, Button, Space, Switch, Table,
-  Avatar, Divider, Tag, Tooltip, message, Row, Col,
+  Avatar, Divider, Tag, Tooltip, message, Row, Col, Empty,
 } from 'antd';
 import {
   UserOutlined, BellOutlined, KeyOutlined, TeamOutlined,
@@ -16,9 +16,6 @@ import { playNotificationSound } from '@/utils/audio';
 import { formatDate } from '@/utils';
 import type { ColumnsType } from 'antd/es/table';
 
-// ---------------------------------------------------------------------------
-// Mock data
-// ---------------------------------------------------------------------------
 interface ApiKey {
   id: string;
   name: string;
@@ -28,32 +25,7 @@ interface ApiKey {
   scopes: string[];
 }
 
-const MOCK_API_KEYS: ApiKey[] = [
-  {
-    id: 'k1',
-    name: 'Production Monitor',
-    key: 'pi_sk_prod_x4f2a...k9m3',
-    createdAt: '2024-01-15T10:00:00Z',
-    lastUsed: '2024-11-08T14:23:00Z',
-    scopes: ['read', 'monitoring'],
-  },
-  {
-    id: 'k2',
-    name: 'CI/CD Integration',
-    key: 'pi_sk_cicd_j7n8b...p2q1',
-    createdAt: '2024-03-20T10:00:00Z',
-    lastUsed: '2024-11-09T08:00:00Z',
-    scopes: ['read', 'testing'],
-  },
-  {
-    id: 'k3',
-    name: 'Slack Webhook',
-    key: 'pi_sk_wh_m3k9z...r7t5',
-    createdAt: '2024-05-10T10:00:00Z',
-    lastUsed: '2024-11-07T18:00:00Z',
-    scopes: ['alerts'],
-  },
-];
+const STORAGE_KEY_API_KEYS = 'api_pulse_api_keys';
 
 // ---------------------------------------------------------------------------
 // Notification settings metadata
@@ -345,7 +317,14 @@ const NotificationsTab: React.FC = () => {
 // ---------------------------------------------------------------------------
 const ApiKeysTab: React.FC = () => {
   const [visibleKey, setVisibleKey] = useState<string | null>(null);
-  const [keys, setKeys]             = useState<ApiKey[]>(MOCK_API_KEYS);
+  const [keys, setKeys] = useState<ApiKey[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_API_KEYS);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const handleCopy = (key: string) => {
     navigator.clipboard.writeText(key).catch(() => null);
@@ -353,20 +332,33 @@ const ApiKeysTab: React.FC = () => {
   };
 
   const handleRevoke = (id: string) => {
-    setKeys(prev => prev.filter(k => k.id !== id));
+    setKeys(prev => {
+      const updated = prev.filter(k => k.id !== id);
+      try {
+        localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     message.success('API key revoked');
   };
 
   const handleCreate = () => {
+    const randomHex = Array.from({ length: 16 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
     const newKey: ApiKey = {
-      id:        `k${Date.now()}`,
-      name:      'New Key',
-      key:       `pi_sk_new_${Math.random().toString(36).slice(2, 10)}...xxxx`,
+      id:        `key_${Date.now()}`,
+      name:      `API Key ${keys.length + 1}`,
+      key:       `pk_live_${randomHex}`,
       createdAt: new Date().toISOString(),
       lastUsed:  new Date().toISOString(),
-      scopes:    ['read'],
+      scopes:    ['read', 'monitoring'],
     };
-    setKeys(prev => [newKey, ...prev]);
+    setKeys(prev => {
+      const updated = [newKey, ...prev];
+      try {
+        localStorage.setItem(STORAGE_KEY_API_KEYS, JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
     message.success('New API key created');
   };
 
@@ -489,6 +481,14 @@ const ApiKeysTab: React.FC = () => {
         pagination={false}
         size="small"
         scroll={{ x: 700 }}
+        locale={{
+          emptyText: (
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description="No API keys generated yet. Click 'Create Key' to generate a real API key."
+            />
+          ),
+        }}
       />
     </Card>
   );

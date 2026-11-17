@@ -17,7 +17,6 @@ import alertsRoutes from './modules/alerts/alerts.routes.js';
 import aiRoutes from './modules/ai/ai.routes.js';
 import testingRoutes from './modules/testing/testing.routes.js';
 import openapiRoutes from './modules/openapi/openapi.routes.js';
-import mockRoutes from './modules/mock/mock.routes.js';
 import notificationsRoutes from './modules/notifications/notifications.routes.js';
 
 export function createApp() {
@@ -76,7 +75,6 @@ export function createApp() {
   v1.use('/ai', aiRoutes);
   v1.use('/testing', testingRoutes);
   v1.use('/openapi', openapiRoutes);
-  v1.use('/mock', mockRoutes);
   v1.use('/notifications', notificationsRoutes);
 
   app.use('/api/v1', v1);

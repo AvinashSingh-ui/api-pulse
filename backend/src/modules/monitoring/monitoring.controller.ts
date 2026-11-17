@@ -2,19 +2,6 @@ import { Request, Response } from 'express';
 import { db } from '../../db/store.js';
 import type { DashboardStats, MetricPoint, UptimeRecord } from '../../types/index.js';
 
-function generateTimeSeriesPoints(count: number, base: number, variance: number): MetricPoint[] {
-  if (base <= 0) return [];
-  const points: MetricPoint[] = [];
-  const now = Date.now();
-  for (let i = count; i >= 0; i--) {
-    points.push({
-      timestamp: new Date(now - i * 3600_000).toISOString(),
-      value: Math.max(0, Math.round(base + (Math.random() - 0.5) * variance * 2)),
-    });
-  }
-  return points;
-}
-
 export const monitoringController = {
   getDashboardStats: (_req: Request, res: Response) => {
     // 1. Identify active, non-deleted projects only
@@ -134,10 +121,44 @@ export const monitoringController = {
       return res.status(404).json({ message: `Endpoint with ID ${id} not found` });
     }
 
-    const responseTime = generateTimeSeriesPoints(24, endpoint.responseTimeP50, 15);
-    const requestVolume = generateTimeSeriesPoints(24, endpoint.requestsPerMin, 10);
-    const errorRate = generateTimeSeriesPoints(24, endpoint.errorRate, 0.2);
-    const uptime = generateTimeSeriesPoints(24, endpoint.uptime, 0.1);
+    const endpointLogs = db.logs.filter(l => l.endpointId === id);
+    if (endpointLogs.length === 0) {
+      return res.json({
+        endpointId: endpoint.id,
+        responseTime: [],
+        requestVolume: [],
+        errorRate: [],
+        uptime: [],
+      });
+    }
+
+    const sortedLogs = [...endpointLogs].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    const responseTime: MetricPoint[] = sortedLogs.slice(-50).map(l => ({
+      timestamp: l.timestamp,
+      value: l.responseTime,
+    }));
+
+    const bucketMap = new Map<string, { total: number; errors: number }>();
+    sortedLogs.forEach(l => {
+      const bucketKey = new Date(l.timestamp).toISOString().slice(0, 13) + ':00:00.000Z';
+      const entry = bucketMap.get(bucketKey) || { total: 0, errors: 0 };
+      entry.total += 1;
+      if (l.statusCode >= 400) entry.errors += 1;
+      bucketMap.set(bucketKey, entry);
+    });
+
+    const requestVolume: MetricPoint[] = [];
+    const errorRate: MetricPoint[] = [];
+    const uptime: MetricPoint[] = [];
+
+    bucketMap.forEach((stats, timestamp) => {
+      requestVolume.push({ timestamp, value: stats.total });
+      errorRate.push({ timestamp, value: Number(((stats.errors / stats.total) * 100).toFixed(2)) });
+      uptime.push({ timestamp, value: Number((((stats.total - stats.errors) / stats.total) * 100).toFixed(2)) });
+    });
 
     return res.json({
       endpointId: endpoint.id,
@@ -149,18 +170,35 @@ export const monitoringController = {
   },
 
   getUptimeHistory: (req: Request, res: Response) => {
+    const { id } = req.params;
     const days = parseInt((req.query.days as string) || '90', 10);
+    const endpointLogs = id ? db.logs.filter(l => l.endpointId === id) : db.logs;
     const records: UptimeRecord[] = [];
     const now = Date.now();
 
     for (let i = days - 1; i >= 0; i--) {
       const d = new Date(now - i * 86400_000);
-      records.push({
-        date: d.toISOString().split('T')[0],
-        status: 'up',
-        uptime: 100,
-        incidents: 0,
-      });
+      const dateStr = d.toISOString().split('T')[0];
+      const dayLogs = endpointLogs.filter(l => l.timestamp.startsWith(dateStr));
+
+      if (dayLogs.length === 0) {
+        records.push({
+          date: dateStr,
+          status: 'up',
+          uptime: 100,
+          incidents: 0,
+        });
+      } else {
+        const errors = dayLogs.filter(l => l.statusCode >= 400).length;
+        const dayUptime = Number((((dayLogs.length - errors) / dayLogs.length) * 100).toFixed(2));
+        const status = dayUptime >= 99 ? 'up' : dayUptime >= 95 ? 'degraded' : 'down';
+        records.push({
+          date: dateStr,
+          status,
+          uptime: dayUptime,
+          incidents: errors,
+        });
+      }
     }
 
     return res.json(records);
@@ -168,9 +206,16 @@ export const monitoringController = {
 
   getResponseTimeHistory: (req: Request, res: Response) => {
     const { id } = req.params;
-    const endpoint = db.endpoints.find(e => e.id === id);
-    const base = endpoint ? endpoint.responseTimeP50 : 0;
-    const points = generateTimeSeriesPoints(24, base, 10);
+    const endpointLogs = db.logs
+      .filter(l => l.endpointId === id)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .slice(-50);
+
+    const points: MetricPoint[] = endpointLogs.map(l => ({
+      timestamp: l.timestamp,
+      value: l.responseTime,
+    }));
+
     return res.json(points);
   },
 
@@ -180,12 +225,14 @@ export const monitoringController = {
     const activeEndpoints = db.endpoints.filter(
       e => activeProjectIds.has(e.projectId) && e.status !== 'paused'
     );
+    const activeEndpointIds = new Set(activeEndpoints.map(e => e.id));
     const activeLogs = db.logs.filter(
-      l => l.projectId && activeProjectIds.has(l.projectId)
+      l =>
+        (l.projectId && activeProjectIds.has(l.projectId)) ||
+        (l.endpointId && activeEndpointIds.has(l.endpointId))
     );
 
-    // If there are zero active endpoints, return empty timeseries so charts show clean empty states
-    if (activeEndpoints.length === 0) {
+    if (activeLogs.length === 0) {
       return res.json({
         responseTime: [],
         requestVolume: [],
@@ -193,14 +240,32 @@ export const monitoringController = {
       });
     }
 
-    const baseRt = Math.round(
-      activeEndpoints.reduce((acc, e) => acc + (e.responseTimeP50 || 0), 0) / activeEndpoints.length
-    );
+    const bucketMap = new Map<string, { total: number; errors: number; totalRt: number }>();
+    activeLogs
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .forEach(l => {
+        const bucketKey = new Date(l.timestamp).toISOString().slice(0, 13) + ':00:00.000Z';
+        const entry = bucketMap.get(bucketKey) || { total: 0, errors: 0, totalRt: 0 };
+        entry.total += 1;
+        if (l.statusCode >= 400) entry.errors += 1;
+        entry.totalRt += l.responseTime;
+        bucketMap.set(bucketKey, entry);
+      });
+
+    const responseTime: MetricPoint[] = [];
+    const requestVolume: MetricPoint[] = [];
+    const errorRate: MetricPoint[] = [];
+
+    bucketMap.forEach((stats, timestamp) => {
+      responseTime.push({ timestamp, value: Math.round(stats.totalRt / stats.total) });
+      requestVolume.push({ timestamp, value: stats.total });
+      errorRate.push({ timestamp, value: Number(((stats.errors / stats.total) * 100).toFixed(2)) });
+    });
 
     return res.json({
-      responseTime: generateTimeSeriesPoints(24, baseRt, 10),
-      requestVolume: generateTimeSeriesPoints(24, Math.max(activeLogs.length, 1), 5),
-      errorRate: generateTimeSeriesPoints(24, 0, 0),
+      responseTime,
+      requestVolume,
+      errorRate,
     });
   },
 };

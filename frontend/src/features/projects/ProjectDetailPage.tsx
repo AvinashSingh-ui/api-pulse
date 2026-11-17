@@ -24,15 +24,9 @@ import { StatusDistributionChart } from '@/components/charts/StatusDistributionC
 import { projectsService } from '@/services/endpoints/projects';
 import { endpointsService } from '@/services/endpoints/endpoints';
 import { alertsService } from '@/services/endpoints/alerts';
+import { logsService } from '@/services/endpoints/logs';
 import { formatResponseTime, formatNumber, fromNow } from '@/utils';
-import type { Project, Endpoint, Alert, MetricPoint, HttpMethod, AlertSeverity } from '@/types';
-
-function generateTimeSeries(points = 24, base = 80, variance = 25): MetricPoint[] {
-  return Array.from({ length: points }, (_, i) => ({
-    timestamp: new Date(Date.now() - (points - i) * 3600_000).toISOString(),
-    value: base > 0 ? Math.max(10, Math.round(base + (Math.random() - 0.5) * variance * 2)) : 0,
-  }));
-}
+import type { Project, Endpoint, Alert, MetricPoint, HttpMethod, AlertSeverity, RequestLog } from '@/types';
 
 export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -42,6 +36,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [endpoints, setEndpoints] = useState<Endpoint[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [logs, setLogs] = useState<RequestLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [search, setSearch] = useState('');
@@ -58,13 +53,12 @@ export default function ProjectDetailPage() {
     if (!projectId) return;
     setIsLoading(true);
     try {
-      const [projData, epsData, alertsData] = await Promise.all([
+      const [projData, epsData, alertsData, logsData] = await Promise.all([
         projectsService.get(projectId).catch(() => null),
         endpointsService.list({ projectId }).catch(() => ({ data: [] })),
         alertsService.listAlerts({ projectId }).catch(() => ({ data: [] })),
+        logsService.list({ projectId }).catch(() => ({ data: [] })),
       ]);
-
-      
 
       if (projData) {
         setProject(projData);
@@ -77,6 +71,7 @@ export default function ProjectDetailPage() {
       }
       setEndpoints(epsData.data || []);
       setAlerts(alertsData.data || []);
+      setLogs(logsData.data || []);
     } catch {
       message.error('Failed to load project details');
     } finally {
@@ -228,8 +223,22 @@ export default function ProjectDetailPage() {
     ? Math.round(endpoints.reduce((acc, e) => acc + (e.responseTimeP50 || 0), 0) / endpoints.length)
     : 0;
 
-  const rtData = generateTimeSeries(24, avgP50, 20);
-  const rvData = generateTimeSeries(24, endpoints.length * 5, 2);
+  // Derive real-time telemetry from project's actual request logs
+  const chronologicalLogs = [...logs].reverse().slice(-50);
+  const rtData: MetricPoint[] = chronologicalLogs.map(l => ({
+    timestamp: l.timestamp,
+    value: l.responseTime,
+  }));
+
+  const hourlyVolumeMap = new Map<string, number>();
+  chronologicalLogs.forEach(l => {
+    const bucketKey = new Date(l.timestamp).toISOString().slice(0, 13) + ':00:00.000Z';
+    hourlyVolumeMap.set(bucketKey, (hourlyVolumeMap.get(bucketKey) || 0) + 1);
+  });
+  const rvData: MetricPoint[] = Array.from(hourlyVolumeMap.entries()).map(([timestamp, value]) => ({
+    timestamp,
+    value,
+  }));
 
   const statusDistData = [
     { name: 'Healthy', value: endpoints.filter(e => e.status === 'healthy').length || (endpoints.length === 0 ? 1 : 0), color: '#22c55e' },

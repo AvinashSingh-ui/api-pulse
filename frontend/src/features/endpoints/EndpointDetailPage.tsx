@@ -55,13 +55,6 @@ interface AssertionItem {
   enabled: boolean;
 }
 
-function generateTimeSeries(points = 24, base = 85, variance = 25): MetricPoint[] {
-  return Array.from({ length: points }, (_, i) => ({
-    timestamp: new Date(Date.now() - (points - i) * 3600_000).toISOString(),
-    value: base > 0 ? Math.max(0, Math.round(base + (Math.random() - 0.5) * variance * 2)) : 0,
-  }));
-}
-
 export default function EndpointDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -239,8 +232,22 @@ export default function EndpointDetailPage() {
     );
   }
 
-  const rtData = generateTimeSeries(24, endpoint.responseTimeP50, 15);
-  const rvData = generateTimeSeries(24, endpoint.requestsPerMin, 5);
+  // Build real-time metric timeseries from actual telemetry logs
+  const chronologicalLogs = [...logs].reverse().slice(-50);
+  const rtData: MetricPoint[] = chronologicalLogs.map(l => ({
+    timestamp: l.timestamp,
+    value: l.responseTime,
+  }));
+
+  const hourlyVolumeMap = new Map<string, number>();
+  chronologicalLogs.forEach(l => {
+    const bucketKey = new Date(l.timestamp).toISOString().slice(0, 13) + ':00:00.000Z';
+    hourlyVolumeMap.set(bucketKey, (hourlyVolumeMap.get(bucketKey) || 0) + 1);
+  });
+  const rvData: MetricPoint[] = Array.from(hourlyVolumeMap.entries()).map(([timestamp, value]) => ({
+    timestamp,
+    value,
+  }));
 
   const statusDistribution = [
     { name: '200 OK', value: checks.filter(c => c.statusCode < 400).length || 1, color: '#22c55e' },

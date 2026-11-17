@@ -79,6 +79,15 @@ class MonitoringScheduler {
     // Safe URL Construction
     const targetUrl = healthService.buildFullUrl(project.baseUrl, endpoint.path);
 
+    let resolvedUrl = targetUrl;
+    if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
+      if (resolvedUrl.startsWith('localhost') || resolvedUrl.startsWith('127.0.0.1')) {
+        resolvedUrl = `http://${resolvedUrl}`;
+      } else if (resolvedUrl.includes('.')) {
+        resolvedUrl = `https://${resolvedUrl}`;
+      }
+    }
+
     const startTime = Date.now();
     let measuredRt = 0;
     let statusCode = 200;
@@ -87,10 +96,16 @@ class MonitoringScheduler {
     let errorMessage: string | undefined;
 
     try {
-      if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
+      if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
+        measuredRt = Date.now() - startTime;
+        isSuccess = false;
+        statusCode = 400;
+        failureType = 'network_error';
+        errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
+      } else {
         const response = await axios({
           method: endpoint.method.toLowerCase(),
-          url: targetUrl,
+          url: resolvedUrl,
           timeout: Math.min(endpoint.timeout || 5000, 5000),
           validateStatus: () => true, // Don't throw on non-2xx
           headers: endpoint.headers || {},
@@ -102,11 +117,6 @@ class MonitoringScheduler {
           failureType = 'unexpected_status';
           errorMessage = `HTTP ${statusCode} (Expected ${endpoint.expectedStatus || 200})`;
         }
-      } else {
-        measuredRt = Math.floor(40 + Math.random() * 80);
-        statusCode = endpoint.expectedStatus || 200;
-        isSuccess = true;
-        failureType = 'none';
       }
     } catch (err: any) {
       measuredRt = Date.now() - startTime;

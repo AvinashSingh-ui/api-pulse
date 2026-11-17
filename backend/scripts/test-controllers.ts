@@ -80,7 +80,10 @@ async function testAll() {
 
   // 5. Health Check Now (Simulation)
   {
-    const targetEp = db.endpoints[0];
+    const targetEp = db.endpoints.find(e => {
+      const proj = db.projects.find(p => p.id === e.projectId);
+      return proj && proj.status === 'active' && !proj.deletedAt;
+    });
     if (targetEp) {
       const { req, res, getResult } = createMockReqRes({}, {}, { id: targetEp.id });
       await endpointsController.checkNow(req, res);
