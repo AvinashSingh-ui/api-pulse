@@ -77,7 +77,10 @@ export function createApp() {
   v1.use('/openapi', openapiRoutes);
   v1.use('/notifications', notificationsRoutes);
 
-  app.use('/api/v1', v1);
+  app.use(config.apiPrefix, v1);
+  if (config.apiPrefix !== '/api/v1') {
+    app.use('/api/v1', v1);
+  }
 
   // Serve static frontend assets if built
   const frontendDist = path.resolve(process.cwd(), '..', 'frontend', 'dist');

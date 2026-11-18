@@ -1,6 +1,23 @@
-// ── API ───────────────────────────────────────────────────
-export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1';
-export const API_TIMEOUT = 30_000;
+// ── API Configuration from Environment ─────────────────────
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  'http://localhost:8000/api/v1';
+
+export const API_TIMEOUT = Number(import.meta.env.VITE_API_TIMEOUT) || 30_000;
+
+export const API_ENDPOINTS = {
+  auth: import.meta.env.VITE_API_AUTH_URL || '/auth',
+  projects: import.meta.env.VITE_API_PROJECTS_URL || '/projects',
+  endpoints: import.meta.env.VITE_API_ENDPOINTS_URL || '/endpoints',
+  monitoring: import.meta.env.VITE_API_MONITORING_URL || '/monitoring',
+  logs: import.meta.env.VITE_API_LOGS_URL || '/logs',
+  alerts: import.meta.env.VITE_API_ALERTS_URL || '/alerts',
+  ai: import.meta.env.VITE_API_AI_URL || '/ai',
+  testing: import.meta.env.VITE_API_TESTING_URL || '/testing',
+  openapi: import.meta.env.VITE_API_OPENAPI_URL || '/openapi',
+  notifications: import.meta.env.VITE_API_NOTIFICATIONS_URL || '/notifications',
+} as const;
 
 // ── Auth ──────────────────────────────────────────────────
 export const TOKEN_KEY   = 'api_pulse_token';
