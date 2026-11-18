@@ -19,6 +19,15 @@ export const testingService = {
   runTest: (id: string) =>
     api.post<TestResult>(`/testing/cases/${id}/run`).then(r => r.data),
 
+  runCustom: (data: {
+    method: string;
+    url: string;
+    headers?: Record<string, string>;
+    params?: Record<string, string>;
+    body?: string;
+    assertions?: any[];
+  }) => api.post<TestResult>('/testing/run-custom', data).then(r => r.data),
+
   runAll: (endpointId?: string) =>
     api.post<TestResult[]>('/testing/run-all', { endpointId }).then(r => r.data),
 

@@ -218,7 +218,7 @@ export type TestStatus = 'pending' | 'running' | 'passed' | 'failed' | 'error';
 export interface TestCase {
   id: string;
   name: string;
-  endpointId: string;
+  endpointId?: string;
   method: HttpMethod;
   url: string;
   headers: Record<string, string>;
@@ -240,13 +240,18 @@ export interface TestResult {
   testCaseId: string;
   status: TestStatus;
   statusCode: number;
+  statusText?: string;
   responseTime: number;
   responseBody: string;
+  responseHeaders?: Record<string, string>;
+  sizeBytes?: number;
+  targetUrl?: string;
   assertionResults: {
     assertionId: string;
     passed: boolean;
     actual: string | number;
     expected: string | number;
+    message?: string;
   }[];
   runAt: string;
   error?: string;

@@ -9,6 +9,7 @@ router.post('/cases', optionalAuth, testingController.createTestCase);
 router.patch('/cases/:id', optionalAuth, testingController.updateTestCase);
 router.delete('/cases/:id', optionalAuth, testingController.deleteTestCase);
 router.post('/cases/:id/run', optionalAuth, testingController.runTest);
+router.post('/run-custom', optionalAuth, testingController.runCustom);
 router.post('/run-all', optionalAuth, testingController.runAll);
 router.get('/cases/:id/results', optionalAuth, testingController.getResults);
 
