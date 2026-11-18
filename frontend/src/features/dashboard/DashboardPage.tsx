@@ -71,8 +71,12 @@ export default function DashboardPage() {
     }
 
     loadData();
+    const timer = setInterval(() => {
+      loadData();
+    }, 60000);
     return () => {
       mounted = false;
+      clearInterval(timer);
     };
   }, []);
 

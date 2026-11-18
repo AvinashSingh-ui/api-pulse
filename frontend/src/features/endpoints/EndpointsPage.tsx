@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import {
   Table, Input, Select, Button, Space, Tag, Tooltip,
   Progress, Card, Modal, Form, message, notification, Popconfirm, Spin, Typography, InputNumber,
+  Badge, Empty,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined,
   ThunderboltOutlined, DeleteOutlined, EyeOutlined,
   EditOutlined, CopyOutlined, CheckCircleOutlined,
   WarningOutlined, CloseCircleOutlined, InfoCircleOutlined,
-  LinkOutlined, ImportOutlined,
+  LinkOutlined, ImportOutlined, RobotOutlined, BulbOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
@@ -18,8 +19,9 @@ import { EmptyState }    from '@/components/common/EmptyState';
 import { ApiImportModal } from '@/components/common/ApiImportModal';
 import { endpointsService } from '@/services/endpoints/endpoints';
 import { projectsService }  from '@/services/endpoints/projects';
+import { aiService }        from '@/services/endpoints/ai';
 import { formatResponseTime, fromNow } from '@/utils';
-import type { Endpoint, HttpMethod, Project } from '@/types';
+import type { Endpoint, HttpMethod, Project, AIInsight } from '@/types';
 
 const { Text } = Typography;
 
@@ -58,6 +60,17 @@ export default function EndpointsPage() {
   const [editForm] = Form.useForm();
   const enteredEditPath = Form.useWatch('path', editForm);
 
+  // Live Auto-Refresh & Monitoring Telemetry Engine
+  const [autoRefreshSec, setAutoRefreshSec] = useState<number>(60);
+  const [countdown, setCountdown] = useState<number>(60);
+  const [isCheckingAll, setIsCheckingAll] = useState<boolean>(false);
+
+  // Gemini AI Diagnosis Modal State
+  const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
+  const [selectedAiEndpoint, setSelectedAiEndpoint] = useState<Endpoint | null>(null);
+  const [aiInsight, setAiInsight] = useState<AIInsight | null>(null);
+  const [isLoadingAi, setIsLoadingAi] = useState<boolean>(false);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -76,6 +89,73 @@ export default function EndpointsPage() {
       message.error('Failed to load endpoints');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Silent background refresh for seamless live updates without screen flicker
+  const loadDataSilently = async () => {
+    try {
+      const epsRes = await endpointsService.list({
+        search: search || undefined,
+        method: method !== 'all' ? method : undefined,
+        status: status !== 'all' ? status : undefined,
+        projectId: project !== 'all' ? project : undefined,
+      });
+      if (epsRes.data) {
+        setEndpoints(epsRes.data);
+      }
+    } catch {
+      // background update silently ignores network blips
+    }
+  };
+
+  // Automated 60-second cycle timer
+  useEffect(() => {
+    if (autoRefreshSec <= 0) return;
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          loadDataSilently();
+          return autoRefreshSec;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [autoRefreshSec, search, method, status, project]);
+
+  const handleRunAllChecks = async () => {
+    setIsCheckingAll(true);
+    try {
+      const targetProjId = project !== 'all' ? project : undefined;
+      const res = await endpointsService.checkAll(targetProjId);
+      message.success(res.message || `Health checks executed for all endpoints.`);
+      await loadData();
+      setCountdown(autoRefreshSec > 0 ? autoRefreshSec : 60);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Failed to run batch health checks');
+    } finally {
+      setIsCheckingAll(false);
+    }
+  };
+
+  const handleOpenAiDiagnosis = async (ep: Endpoint, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedAiEndpoint(ep);
+    setIsAiModalOpen(true);
+    setIsLoadingAi(true);
+    setAiInsight(null);
+    try {
+      const insights = await aiService.analyzeEndpoint(ep.id);
+      if (insights && insights.length > 0) {
+        setAiInsight(insights[0]);
+      } else {
+        message.info('No diagnosis generated for this endpoint.');
+      }
+    } catch {
+      message.error('Failed to generate AI diagnosis');
+    } finally {
+      setIsLoadingAi(false);
     }
   };
 
@@ -413,9 +493,10 @@ export default function EndpointsPage() {
     {
       title: 'Actions',
       key: 'actions',
-      width: 150,
+      width: 180,
       render: (_, r) => {
         const isRunning = checkingIds.has(r.id);
+        const hasIssue = r.status === 'down' || r.status === 'degraded' || (r.lastStatusCode && r.lastStatusCode >= 400);
         return (
           <Space size={4} onClick={e => e.stopPropagation()}>
             <Tooltip title="Run live check now">
@@ -425,6 +506,14 @@ export default function EndpointsPage() {
                 loading={isRunning}
                 disabled={isRunning}
                 onClick={(e) => handleRunCheck(r.id, e)}
+              />
+            </Tooltip>
+            <Tooltip title="AI Root Cause Analysis & Fix (Powered by Gemini)">
+              <Button
+                size="small"
+                style={hasIssue ? { borderColor: '#8b5cf6', background: '#f5f3ff' } : {}}
+                icon={<RobotOutlined style={{ color: hasIssue ? '#7c3aed' : '#8b5cf6' }} />}
+                onClick={(e) => handleOpenAiDiagnosis(r, e)}
               />
             </Tooltip>
             <Tooltip title="View endpoint details">
@@ -465,7 +554,48 @@ export default function EndpointsPage() {
         subtitle="Real-time API monitoring, health scoring, and latency telemetry"
         breadcrumbs={[{ label: 'Endpoints' }]}
         actions={
-          <Space>
+          <Space wrap size={10}>
+            {autoRefreshSec > 0 ? (
+              <Badge
+                status="processing"
+                color="#22c55e"
+                text={
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
+                    Live: {countdown}s
+                  </span>
+                }
+              />
+            ) : (
+              <Badge
+                status="default"
+                text={<span style={{ fontSize: 13, color: '#94a3b8' }}>Live: Paused</span>}
+              />
+            )}
+
+            <Select
+              size="middle"
+              value={autoRefreshSec}
+              onChange={val => {
+                setAutoRefreshSec(val);
+                setCountdown(val);
+              }}
+              style={{ width: 135 }}
+              options={[
+                { label: 'Auto (60s)', value: 60 },
+                { label: 'Fast (30s)', value: 30 },
+                { label: 'Rapid (15s)', value: 15 },
+                { label: 'Paused',     value: 0 },
+              ]}
+            />
+
+            <Button
+              icon={<ThunderboltOutlined style={{ color: '#f59e0b' }} />}
+              onClick={handleRunAllChecks}
+              loading={isCheckingAll}
+            >
+              Run All Checks
+            </Button>
+
             <Button icon={<ReloadOutlined />} onClick={loadData}>Refresh</Button>
             <Button
               icon={<ImportOutlined />}
@@ -769,6 +899,159 @@ export default function EndpointsPage() {
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={loadData}
       />
+
+      {/* ── Modal: Gemini AI Root Cause & Fix Diagnosis ───────────────────── */}
+      <Modal
+        open={isAiModalOpen}
+        onCancel={() => { setIsAiModalOpen(false); setSelectedAiEndpoint(null); setAiInsight(null); }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <RobotOutlined style={{ color: '#8b5cf6', fontSize: 22 }} />
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                AI Root Cause Analysis & Fix
+              </div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+                Powered by Google Gemini • Live Telemetry Diagnosis
+              </div>
+            </div>
+          </div>
+        }
+        width={720}
+        style={{ maxWidth: '95vw', top: 30 }}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setIsAiModalOpen(false)}>
+            Done
+          </Button>,
+        ]}
+      >
+        {selectedAiEndpoint && (
+          <div style={{ marginTop: 12 }}>
+            {/* Header info */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <HttpMethodTag method={selectedAiEndpoint.method} size="sm" />
+                <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
+                  {selectedAiEndpoint.path}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Tag color={selectedAiEndpoint.status === 'healthy' ? 'success' : selectedAiEndpoint.status === 'degraded' ? 'warning' : 'error'} style={{ fontWeight: 700 }}>
+                  {selectedAiEndpoint.status.toUpperCase()} ({selectedAiEndpoint.healthScore ?? 100}%)
+                </Tag>
+                {selectedAiEndpoint.lastStatusCode && (
+                  <Tag color={selectedAiEndpoint.lastStatusCode >= 400 ? 'red' : 'green'}>
+                    HTTP {selectedAiEndpoint.lastStatusCode}
+                  </Tag>
+                )}
+                <span style={{ fontSize: 12, color: '#64748b' }}>
+                  P50: {selectedAiEndpoint.responseTimeP50 || 0}ms
+                </span>
+              </div>
+            </div>
+
+            {isLoadingAi ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <Spin size="large" />
+                <div style={{ marginTop: 14, color: '#475569', fontWeight: 500 }}>
+                  Gemini is analyzing endpoint telemetry, status code patterns, and latency logs...
+                </div>
+              </div>
+            ) : aiInsight ? (
+              <div>
+                {/* Title & Description */}
+                <Card size="small" style={{ borderRadius: 8, marginBottom: 14, borderLeft: '4px solid #8b5cf6' }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', marginBottom: 6 }}>
+                    {aiInsight.title}
+                  </div>
+                  <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                    {aiInsight.description}
+                  </div>
+                </Card>
+
+                {/* Likely Causes */}
+                {aiInsight.likelyCauses && aiInsight.likelyCauses.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      Likely Causes:
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {aiInsight.likelyCauses.map((c, i) => (
+                        <div key={i} style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{c.cause}</span>
+                            <Tag color={c.confidence === 'high' ? 'red' : 'orange'} style={{ fontSize: 10, textTransform: 'uppercase' }}>
+                              {c.confidence} Confidence
+                            </Tag>
+                          </div>
+                          {c.evidence && <div style={{ color: '#64748b' }}>Evidence: {c.evidence}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommended Checks */}
+                {aiInsight.suggestedChecks && aiInsight.suggestedChecks.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                      Diagnostic Checks:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#334155' }}>
+                      {aiInsight.suggestedChecks.map((chk, i) => (
+                        <li key={i} style={{ marginBottom: 4 }}>{chk}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Suggested Fix */}
+                {aiInsight.suggestedFix && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                        Suggested Code / Architecture Fix:
+                      </span>
+                      {aiInsight.suggestedFix.codeSnippet && (
+                        <Button
+                          size="small"
+                          icon={<CopyOutlined />}
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiInsight.suggestedFix?.codeSnippet || '');
+                            message.success('Code fix copied to clipboard!');
+                          }}
+                        >
+                          Copy Code
+                        </Button>
+                      )}
+                    </div>
+                    {aiInsight.suggestedFix.summary && (
+                      <div style={{ fontSize: 12, color: '#475569', marginBottom: 8, fontStyle: 'italic' }}>
+                        {aiInsight.suggestedFix.summary}
+                      </div>
+                    )}
+                    {aiInsight.suggestedFix.codeSnippet && (
+                      <pre style={{
+                        background: '#0f172a',
+                        color: '#f8fafc',
+                        padding: 12,
+                        borderRadius: 8,
+                        fontSize: 12,
+                        overflowX: 'auto',
+                        fontFamily: 'JetBrains Mono, monospace',
+                      }}>
+                        <code>{aiInsight.suggestedFix.codeSnippet}</code>
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Empty description="No AI insights found for this endpoint." />
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

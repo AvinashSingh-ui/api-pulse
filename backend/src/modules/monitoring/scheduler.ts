@@ -103,12 +103,19 @@ class MonitoringScheduler {
         failureType = 'network_error';
         errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
       } else {
+        const isMutation = endpoint.method !== 'GET' && endpoint.method !== 'HEAD';
+        const requestHeaders: Record<string, string> = {
+          'Accept': 'application/json, text/plain, */*',
+          ...(isMutation ? { 'Content-Type': 'application/json' } : {}),
+          ...(endpoint.headers || {}),
+        };
         const response = await axios({
           method: endpoint.method.toLowerCase(),
           url: resolvedUrl,
           timeout: Math.min(endpoint.timeout || 5000, 5000),
           validateStatus: () => true, // Don't throw on non-2xx
-          headers: endpoint.headers || {},
+          headers: requestHeaders,
+          data: isMutation ? (endpoint.body || {}) : undefined,
         });
         measuredRt = Date.now() - startTime;
         statusCode = response.status;

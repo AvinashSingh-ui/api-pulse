@@ -5,6 +5,7 @@ import { optionalAuth } from '../../middlewares/auth.js';
 const router = Router();
 
 router.get('/', optionalAuth, endpointsController.list);
+router.post('/check-all', optionalAuth, endpointsController.checkAll);
 router.get('/:id', optionalAuth, endpointsController.getById);
 router.post('/', optionalAuth, endpointsController.create);
 router.patch('/:id', optionalAuth, endpointsController.update);

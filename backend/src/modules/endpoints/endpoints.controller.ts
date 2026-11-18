@@ -352,12 +352,19 @@ export const endpointsController = {
           failureType = 'network_error';
           errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
         } else {
+          const isMutation = endpoint.method !== 'GET' && endpoint.method !== 'HEAD';
+          const requestHeaders: Record<string, string> = {
+            'Accept': 'application/json, text/plain, */*',
+            ...(isMutation ? { 'Content-Type': 'application/json' } : {}),
+            ...(endpoint.headers || {}),
+          };
           const response = await axios({
             method: endpoint.method.toLowerCase(),
             url: resolvedUrl,
             timeout: Math.min(endpoint.timeout || 5000, 5000),
             validateStatus: () => true, // Don't throw on 4xx/5xx so we read actual HTTP status code
-            headers: endpoint.headers || {},
+            headers: requestHeaders,
+            data: isMutation ? (endpoint.body || {}) : undefined,
           });
           measuredRt = Date.now() - startTime;
           statusCode = response.status;
@@ -567,6 +574,161 @@ export const endpointsController = {
       });
     } finally {
       activeChecks.delete(id);
+    }
+  },
+
+  checkAll: async (req: Request, res: Response) => {
+    try {
+      const { projectId } = req.body || {};
+      const activeProjectIds = new Set(
+        db.projects
+          .filter(p => p.status === 'active' && !p.deletedAt && (!projectId || p.id === projectId))
+          .map(p => p.id)
+      );
+
+      const endpointsToCheck = db.endpoints.filter(
+        e => e.status !== 'paused' && activeProjectIds.has(e.projectId)
+      );
+
+      const results: any[] = [];
+      for (const ep of endpointsToCheck) {
+        try {
+          const project = db.projects.find(p => p.id === ep.projectId);
+          if (!project) continue;
+
+          const targetUrl = healthService.buildFullUrl(project.baseUrl, ep.path);
+          let resolvedUrl = targetUrl;
+          if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
+            if (resolvedUrl.startsWith('localhost') || resolvedUrl.startsWith('127.0.0.1')) {
+              resolvedUrl = `http://${resolvedUrl}`;
+            } else if (resolvedUrl.includes('.')) {
+              resolvedUrl = `https://${resolvedUrl}`;
+            }
+          }
+
+          const startTime = Date.now();
+          let measuredRt = 0;
+          let statusCode = 200;
+          let isSuccess = true;
+          let failureType: RequestLog['failureType'] = 'none';
+          let errorMessage: string | undefined;
+
+          try {
+            if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
+              measuredRt = Date.now() - startTime;
+              isSuccess = false;
+              statusCode = 400;
+              failureType = 'network_error';
+              errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
+            } else {
+              const isMutation = ep.method !== 'GET' && ep.method !== 'HEAD';
+              const requestHeaders: Record<string, string> = {
+                'Accept': 'application/json, text/plain, */*',
+                ...(isMutation ? { 'Content-Type': 'application/json' } : {}),
+                ...(ep.headers || {}),
+              };
+              const response = await axios({
+                method: ep.method.toLowerCase(),
+                url: resolvedUrl,
+                timeout: Math.min(ep.timeout || 5000, 5000),
+                validateStatus: () => true,
+                headers: requestHeaders,
+                data: isMutation ? (ep.body || {}) : undefined,
+              });
+              measuredRt = Date.now() - startTime;
+              statusCode = response.status;
+              isSuccess = statusCode === (ep.expectedStatus || 200);
+              if (!isSuccess) {
+                failureType = 'unexpected_status';
+                errorMessage = `HTTP ${statusCode} (Expected ${ep.expectedStatus || 200})`;
+              }
+            }
+          } catch (err: any) {
+            measuredRt = Date.now() - startTime;
+            isSuccess = false;
+            failureType = err.code === 'ECONNABORTED' ? 'timeout' : 'network_error';
+            statusCode = err.code === 'ECONNABORTED' ? 504 : 503;
+            errorMessage = err.message || 'Connection failed';
+          }
+
+          // RequestLog
+          const newLog: RequestLog = {
+            id: `log_${uuidv4().slice(0, 8)}`,
+            endpointId: ep.id,
+            projectId: ep.projectId,
+            method: ep.method,
+            path: ep.path,
+            statusCode,
+            responseTime: measuredRt,
+            requestSize: 256,
+            responseSize: 1024,
+            ip: '127.0.0.1',
+            userAgent: 'API-Pulse-Automated-Monitor/1.0',
+            timestamp: new Date().toISOString(),
+            failureType,
+            error: errorMessage,
+          };
+          db.logs.unshift(newLog);
+          if (db.logs.length > 500) db.logs.pop();
+
+          const recentLogs = db.logs.filter(l => l.endpointId === ep.id);
+          const healthResult = healthService.calculateHealth({
+            currentStatusCode: statusCode,
+            currentResponseTime: measuredRt,
+            expectedStatus: ep.expectedStatus || 200,
+            latencyThresholdMs: ep.latencyThresholdMs || 500,
+            failureType,
+            recentLogs,
+            timeout: ep.timeout || 5000,
+          });
+
+          ep.lastChecked = new Date().toISOString();
+          ep.lastStatusCode = statusCode;
+          ep.status = healthResult.status;
+          ep.healthScore = healthResult.healthScore;
+          ep.degradationReason = healthResult.degradationReason;
+          ep.responseTimeP50 = healthResult.responseTimeP50;
+          ep.responseTimeP95 = healthResult.responseTimeP95;
+          ep.responseTimeP99 = healthResult.responseTimeP99;
+          ep.uptime = healthResult.uptime;
+
+          if (sqliteService.isConnected) {
+            try {
+              sqliteService.execute(
+                'UPDATE endpoints SET status = ?, health_score = ?, degradation_reason = ?, last_status_code = ?, p50_ms = ?, p95_ms = ?, p99_ms = ?, uptime = ?, last_checked = ? WHERE id = ?',
+                [ep.status, ep.healthScore ?? null, ep.degradationReason ?? null, ep.lastStatusCode ?? null, ep.responseTimeP50, ep.responseTimeP95, ep.responseTimeP99, ep.uptime, ep.lastChecked, ep.id]
+              );
+            } catch {}
+          }
+
+          // Trigger AI Analysis if degraded or down
+          if (ep.status === 'down' || ep.status === 'degraded') {
+            aiService.analyzeEndpoint(ep.id).catch(() => null);
+          }
+
+          results.push({
+            id: ep.id,
+            name: ep.name,
+            method: ep.method,
+            path: ep.path,
+            status: ep.status,
+            statusCode,
+            responseTime: measuredRt,
+            healthScore: ep.healthScore,
+          });
+        } catch (err: any) {
+          console.warn(`[Endpoints] Error checking ${ep.id}:`, err.message);
+        }
+      }
+
+      db.save();
+      return res.json({
+        message: `Successfully executed health checks for ${results.length} endpoint(s).`,
+        totalChecked: results.length,
+        results,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ message: err.message || 'Failed to execute batch checks' });
     }
   },
 };

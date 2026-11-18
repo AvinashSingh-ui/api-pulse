@@ -33,4 +33,11 @@ export const endpointsService = {
       aiInsight?: AIInsight;
       endpoint?: Endpoint;
     }>(`/endpoints/${id}/check`).then(r => r.data),
+
+  checkAll: (projectId?: string) =>
+    api.post<{
+      message: string;
+      totalChecked: number;
+      results: any[];
+    }>('/endpoints/check-all', { projectId }).then(r => r.data),
 };
