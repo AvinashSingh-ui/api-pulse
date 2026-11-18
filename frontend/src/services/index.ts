@@ -8,4 +8,5 @@ export * from './endpoints/alerts';
 export * from './endpoints/testing';
 export * from './endpoints/ai';
 export * from './endpoints/notifications';
+export * from './endpoints/openapi';
 

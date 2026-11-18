@@ -9,7 +9,7 @@ import {
   ThunderboltOutlined, ReloadOutlined, CopyOutlined,
   GlobalOutlined, DeleteOutlined, EyeOutlined, CheckOutlined,
   ApiOutlined, RiseOutlined, BellOutlined,
-  SettingOutlined,
+  SettingOutlined, ImportOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
@@ -18,6 +18,7 @@ import { StatCard } from '@/components/common/StatCard';
 import { StatusBadge, SeverityBadge } from '@/components/common/StatusBadge';
 import { HttpMethodTag } from '@/components/common/HttpMethodTag';
 import { EmptyState } from '@/components/common/EmptyState';
+import { ApiImportModal } from '@/components/common/ApiImportModal';
 import { ResponseTimeChart } from '@/components/charts/ResponseTimeChart';
 import { RequestVolumeChart } from '@/components/charts/RequestVolumeChart';
 import { StatusDistributionChart } from '@/components/charts/StatusDistributionChart';
@@ -43,6 +44,7 @@ export default function ProjectDetailPage() {
   const [methodFilter, setMethodFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [checkingId, setCheckingId] = useState<string | null>(null);
 
@@ -86,7 +88,7 @@ export default function ProjectDetailPage() {
   const handleCopyBaseUrl = () => {
     if (project?.baseUrl) {
       navigator.clipboard.writeText(project.baseUrl);
-      message.success('Base URL copied to clipboard!');
+      message.success('Application deployed link / Base URL copied to clipboard!');
     }
   };
 
@@ -350,6 +352,12 @@ export default function ProjectDetailPage() {
               Back to Projects
             </Button>
             <Button
+              icon={<ImportOutlined />}
+              onClick={() => setIsImportModalOpen(true)}
+            >
+              Import APIs
+            </Button>
+            <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setIsModalOpen(true)}
@@ -372,7 +380,7 @@ export default function ProjectDetailPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
               <GlobalOutlined style={{ color: '#64748b', fontSize: 13 }} />
               <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#334155' }}>{project.baseUrl}</span>
-              <Tooltip title="Copy Base URL">
+              <Tooltip title="Copy Application Deployed Link / Base URL">
                 <Button type="text" size="small" icon={<CopyOutlined />} onClick={handleCopyBaseUrl} style={{ padding: '0 4px', height: 20 }} />
               </Tooltip>
             </div>
@@ -470,14 +478,22 @@ export default function ProjectDetailPage() {
                       <Button icon={<ReloadOutlined />} onClick={loadData} />
                     </Space>
 
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      onClick={() => setIsModalOpen(true)}
-                      style={{ borderRadius: 8 }}
-                    >
-                      Add Endpoint
-                    </Button>
+                    <Space>
+                      <Button
+                        icon={<ImportOutlined />}
+                        onClick={() => setIsImportModalOpen(true)}
+                      >
+                        Import APIs
+                      </Button>
+                      <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={() => setIsModalOpen(true)}
+                        style={{ borderRadius: 8 }}
+                      >
+                        Add Endpoint
+                      </Button>
+                    </Space>
                   </div>
 
                   {endpoints.length === 0 ? (
@@ -627,8 +643,13 @@ export default function ProjectDetailPage() {
                     <Form.Item name="description" label="Description">
                       <Input.TextArea rows={3} />
                     </Form.Item>
-                    <Form.Item name="baseUrl" label="Base URL" rules={[{ required: true, type: 'url' }]}>
-                      <Input />
+                    <Form.Item
+                      name="baseUrl"
+                      label="Application Deployed Link / Base Server URL"
+                      tooltip="Live deployed application URL (e.g. Vercel, Render, AWS, custom domain) or local server URL"
+                      rules={[{ required: true, type: 'url', message: 'Please provide a valid application deployed link or base server URL' }]}
+                    >
+                      <Input placeholder="https://my-deployed-app.vercel.app, https://api.example.com or http://localhost:8000" />
                     </Form.Item>
                     <Form.Item name="environment" label="Environment" rules={[{ required: true }]}>
                       <Select
@@ -732,6 +753,14 @@ export default function ProjectDetailPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* ── Modal: API Import & Integration Center ─────────────────────────── */}
+      <ApiImportModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        defaultProjectId={projectId}
+        onSuccess={loadData}
+      />
     </div>
   );
 }

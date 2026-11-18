@@ -134,13 +134,16 @@ async function testAll() {
     console.log('8b. AI Chat Assistant:', chatRes.response.length > 20 ? '[PASS]' : '[FAIL]');
   }
 
-  // 9. OpenAPI Specification Import
+  // 9. OpenAPI / Swagger / Multi-Method API Import
   {
+    // 9a. OpenAPI Spec
     const sampleYaml = `
 openapi: 3.0.0
 info:
   title: Sample Pet Store API
   version: 1.0.0
+servers:
+  - url: https://petstore.example.com/api/v1
 paths:
   /pets:
     get:
@@ -159,10 +162,68 @@ paths:
         '201':
           description: Created
 `;
-    const preview = await openapiService.previewSpec({ rawContent: sampleYaml, projectId: 'p1' });
-    console.log('9. OpenAPI Spec Parser & Sync Plan:', preview.endpoints.length === 2 ? '[PASS]' : '[FAIL]', {
-      totalOperations: preview.totalOperations,
-      createCount: preview.createCount,
+    const openapiPreview = await openapiService.previewSpec({ rawContent: sampleYaml, projectId: 'p1' });
+    console.log('9a. OpenAPI Spec Parser:', openapiPreview.endpoints.length === 2 && openapiPreview.suggestedBaseUrl === 'https://petstore.example.com/api/v1' ? '[PASS]' : '[FAIL]', {
+      format: openapiPreview.format,
+      total: openapiPreview.totalOperations,
+      suggestedBaseUrl: openapiPreview.suggestedBaseUrl,
+    });
+
+    // 9b. Postman Collection
+    const postmanJson = JSON.stringify({
+      info: { name: 'E-Commerce Postman Collection', schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json' },
+      item: [
+        {
+          name: 'Get Products',
+          request: { method: 'GET', url: 'https://api.store.com/v1/products' },
+        },
+        {
+          name: 'Create Order',
+          request: { method: 'POST', url: { raw: 'https://api.store.com/v1/orders', host: ['api', 'store', 'com'], path: ['v1', 'orders'] } },
+        },
+      ],
+    });
+    const postmanPreview = await openapiService.previewSpec({ rawContent: postmanJson, format: 'postman' });
+    console.log('9b. Postman Collection Parser:', postmanPreview.endpoints.length === 2 && postmanPreview.format === 'postman' ? '[PASS]' : '[FAIL]', {
+      format: postmanPreview.format,
+      total: postmanPreview.totalOperations,
+      suggestedBaseUrl: postmanPreview.suggestedBaseUrl,
+    });
+
+    // 9c. cURL Commands
+    const curlText = `
+curl -X GET "https://api.payment.com/v1/transactions?limit=20" -H "Authorization: Bearer test"
+curl -X POST "https://api.payment.com/v1/charges" -H "Content-Type: application/json" -d '{"amount": 500}'
+`;
+    const curlPreview = await openapiService.previewSpec({ rawContent: curlText });
+    console.log('9c. cURL Commands Parser:', curlPreview.endpoints.length === 2 && curlPreview.format === 'curl' ? '[PASS]' : '[FAIL]', {
+      format: curlPreview.format,
+      total: curlPreview.totalOperations,
+      suggestedBaseUrl: curlPreview.suggestedBaseUrl,
+    });
+
+    // 9d. Quick Batch Route List
+    const routeText = `
+GET /api/v1/users - List users
+POST /api/v1/users - Create user
+DELETE /api/v1/users/:id - Delete user
+`;
+    const routesPreview = await openapiService.previewSpec({ rawContent: routeText, format: 'routes' });
+    console.log('9d. Bulk Routes Parser:', routesPreview.endpoints.length === 3 && routesPreview.format === 'routes' ? '[PASS]' : '[FAIL]', {
+      format: routesPreview.format,
+      total: routesPreview.totalOperations,
+    });
+
+    // 9e. Atomic Project Creation & Import
+    const importRes = await openapiService.applyImport(undefined, curlPreview.endpoints, {
+      name: 'Payment Gateway Imported',
+      baseUrl: curlPreview.suggestedBaseUrl || 'https://api.payment.com',
+      environment: 'production',
+      description: 'Imported via cURL',
+    });
+    console.log('9e. Atomic Import & Project Creation:', importRes.project?.id && importRes.addedCount === 2 ? '[PASS]' : '[FAIL]', {
+      projectId: importRes.project?.id,
+      added: importRes.addedCount,
     });
   }
 

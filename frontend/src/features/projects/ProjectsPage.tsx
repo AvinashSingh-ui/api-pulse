@@ -1,18 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Row, Col, Card, Input, Select, Button, Tag, Progress,
-  Space, Popconfirm, Tooltip, Badge, Modal, Form, message, Spin, Tabs, Table, Typography,
+  Space, Popconfirm, Tooltip, Badge, Modal, Form, message, Spin, Tabs, Table, Typography, Alert,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, GlobalOutlined,
   ApiOutlined, DeleteOutlined, EyeOutlined, ReloadOutlined,
   HistoryOutlined, UndoOutlined, CopyOutlined, AppstoreOutlined,
-  ExclamationCircleOutlined,
+  ExclamationCircleOutlined, ImportOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import { PageHeader } from '@/components/common/PageHeader';
 import { EmptyState }  from '@/components/common/EmptyState';
+import { ApiImportModal } from '@/components/common/ApiImportModal';
 import { projectsService } from '@/services/endpoints/projects';
 import { fromNow, formatDate } from '@/utils';
 import type { Project } from '@/types';
@@ -46,8 +47,9 @@ export default function ProjectsPage() {
   const [historyStatus, setHistoryStatus] = useState<string>('all');
   const [historyEnv, setHistoryEnv] = useState<string>('all');
 
-  // Modal State for New Project
+  // Modal State for New Project & Import Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form] = Form.useForm();
 
@@ -193,21 +195,21 @@ export default function ProjectsPage() {
       ),
     },
     {
-      title: 'API Server URL',
+      title: 'Deployed Link / Base URL',
       dataIndex: 'baseUrl',
       key: 'baseUrl',
-      width: 220,
+      width: 230,
       render: (url: string) => (
         <Space size={4}>
           <Text code style={{ fontSize: 12 }}>{url}</Text>
-          <Tooltip title="Copy URL">
+          <Tooltip title="Copy Deployed Link / Base URL">
             <Button
               type="text"
               size="small"
               icon={<CopyOutlined style={{ fontSize: 11, color: '#94a3b8' }} />}
               onClick={() => {
                 navigator.clipboard.writeText(url);
-                message.success('URL copied to clipboard');
+                message.success('Deployed link / Base URL copied to clipboard');
               }}
             />
           </Tooltip>
@@ -321,6 +323,12 @@ export default function ProjectsPage() {
               Refresh
             </Button>
             <Button
+              icon={<ImportOutlined />}
+              onClick={() => setIsImportModalOpen(true)}
+            >
+              Import APIs
+            </Button>
+            <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setIsModalOpen(true)}
@@ -377,10 +385,10 @@ export default function ProjectsPage() {
             <Space wrap size={12}>
               <Input
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="Search active projects by name or base URL..."
+                placeholder="Search active projects by name or deployed link..."
                 value={activeSearch}
                 onChange={e => setActiveSearch(e.target.value)}
-                style={{ width: 280, borderRadius: 8 }}
+                style={{ width: 300, borderRadius: 8 }}
                 allowClear
               />
               <Select
@@ -491,23 +499,26 @@ export default function ProjectsPage() {
                       {project.description || 'No description provided.'}
                     </p>
 
-                    {/* Base URL */}
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      fontSize: 12,
-                      color: '#64748b',
-                      marginBottom: 14,
-                      background: '#f8fafc',
-                      padding: '6px 10px',
-                      borderRadius: 6,
-                    }}>
-                      <GlobalOutlined style={{ color: '#94a3b8', flexShrink: 0 }} />
-                      <span style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {project.baseUrl}
-                      </span>
-                    </div>
+                    {/* Application Deployed Link / Base URL */}
+                    <Tooltip title="Application Deployed Link / Base Server URL">
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 12,
+                        color: '#64748b',
+                        marginBottom: 14,
+                        background: '#f8fafc',
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        cursor: 'default',
+                      }}>
+                        <GlobalOutlined style={{ color: '#94a3b8', flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {project.baseUrl}
+                        </span>
+                      </div>
+                    </Tooltip>
 
                     {/* Metrics Row */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -564,10 +575,10 @@ export default function ProjectsPage() {
             <Space wrap size={12}>
               <Input
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-                placeholder="Search history by project name or base URL..."
+                placeholder="Search history by project name or deployed link..."
                 value={historySearch}
                 onChange={e => setHistorySearch(e.target.value)}
-                style={{ width: 300, borderRadius: 8 }}
+                style={{ width: 320, borderRadius: 8 }}
                 allowClear
               />
               <Select
@@ -631,19 +642,57 @@ export default function ProjectsPage() {
       <Modal
         title="Create New Project"
         open={isModalOpen}
-        onOk={handleCreateProject}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
-        confirmLoading={isSubmitting}
-        okText="Create Project"
-        cancelText="Cancel"
         destroyOnClose
-        width={560}
+        width={580}
         style={{ maxWidth: '95vw' }}
+        footer={[
+          <Button
+            key="import"
+            icon={<ImportOutlined />}
+            onClick={() => {
+              setIsModalOpen(false);
+              setIsImportModalOpen(true);
+            }}
+          >
+            Import from OpenAPI / Postman / cURL
+          </Button>,
+          <Button key="cancel" onClick={() => { setIsModalOpen(false); form.resetFields(); }}>
+            Cancel
+          </Button>,
+          <Button key="submit" type="primary" loading={isSubmitting} onClick={handleCreateProject}>
+            Create Project
+          </Button>,
+        ]}
       >
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginTop: 12, marginBottom: 16, borderRadius: 8 }}
+          message={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+              <span style={{ fontSize: 13, color: '#1e293b' }}>
+                Have an OpenAPI spec, Postman collection, or cURL command?
+              </span>
+              <Button
+                size="small"
+                type="link"
+                icon={<ImportOutlined />}
+                style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setIsImportModalOpen(true);
+                }}
+              >
+                Import APIs Instead →
+              </Button>
+            </div>
+          }
+        />
+
         <Form
           form={form}
           layout="vertical"
-          style={{ marginTop: 16 }}
           initialValues={{ environment: 'production', tags: [] }}
         >
           <Form.Item
@@ -656,13 +705,14 @@ export default function ProjectsPage() {
 
           <Form.Item
             name="baseUrl"
-            label="Base Server URL"
+            label="Application Deployed Link / Base Server URL"
+            tooltip="Enter your live deployed application URL (e.g. Vercel, Render, AWS, custom domain) or local server URL (e.g. http://localhost:8000)"
             rules={[
-              { required: true, message: 'Please provide a base URL' },
+              { required: true, message: 'Please provide an application deployed link or base server URL' },
               { type: 'url', message: 'Must be a valid URL starting with http:// or https://' },
             ]}
           >
-            <Input placeholder="https://api.orders.example.com" />
+            <Input placeholder="https://my-deployed-app.vercel.app, https://api.example.com or http://localhost:8000" />
           </Form.Item>
 
           <Form.Item name="description" label="Description">
@@ -684,6 +734,16 @@ export default function ProjectsPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* ── Modal: API Import & Integration Center ─────────────────────────── */}
+      <ApiImportModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={() => {
+          loadActiveProjects();
+          loadHistoryProjects();
+        }}
+      />
     </div>
   );
 }

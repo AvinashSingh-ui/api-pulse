@@ -440,7 +440,7 @@ export const endpointsController = {
         try {
           sqliteService.execute(
             'UPDATE endpoints SET status = ?, health_score = ?, degradation_reason = ?, last_status_code = ?, p50_ms = ?, p95_ms = ?, p99_ms = ?, uptime = ?, last_checked = ? WHERE id = ?',
-            [endpoint.status, endpoint.healthScore, endpoint.degradationReason, endpoint.lastStatusCode, endpoint.responseTimeP50, endpoint.responseTimeP95, endpoint.responseTimeP99, endpoint.uptime, endpoint.lastChecked, endpoint.id]
+            [endpoint.status, endpoint.healthScore ?? null, endpoint.degradationReason ?? null, endpoint.lastStatusCode ?? null, endpoint.responseTimeP50, endpoint.responseTimeP95, endpoint.responseTimeP99, endpoint.uptime, endpoint.lastChecked, endpoint.id]
           );
           sqliteService.execute(
             'INSERT INTO request_logs (id, endpoint_id, project_id, method, path, status_code, response_time_ms, request_size, response_size, ip_address, user_agent, failure_type, error_message, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',

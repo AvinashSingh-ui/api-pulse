@@ -8,13 +8,14 @@ import {
   ThunderboltOutlined, DeleteOutlined, EyeOutlined,
   EditOutlined, CopyOutlined, CheckCircleOutlined,
   WarningOutlined, CloseCircleOutlined, InfoCircleOutlined,
-  LinkOutlined,
+  LinkOutlined, ImportOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import { PageHeader }    from '@/components/common/PageHeader';
 import { HttpMethodTag } from '@/components/common/HttpMethodTag';
 import { EmptyState }    from '@/components/common/EmptyState';
+import { ApiImportModal } from '@/components/common/ApiImportModal';
 import { endpointsService } from '@/services/endpoints/endpoints';
 import { projectsService }  from '@/services/endpoints/projects';
 import { formatResponseTime, fromNow } from '@/utils';
@@ -44,6 +45,7 @@ export default function EndpointsPage() {
 
   // Register Modal State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSubmittingCreate, setIsSubmittingCreate] = useState(false);
   const [createForm] = Form.useForm();
   const selectedCreateProjectId = Form.useWatch('projectId', createForm);
@@ -466,6 +468,12 @@ export default function EndpointsPage() {
           <Space>
             <Button icon={<ReloadOutlined />} onClick={loadData}>Refresh</Button>
             <Button
+              icon={<ImportOutlined />}
+              onClick={() => setIsImportModalOpen(true)}
+            >
+              Import APIs
+            </Button>
+            <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={handleOpenCreateModal}
@@ -754,6 +762,13 @@ export default function EndpointsPage() {
           </Form.Item>
         </Form>
       </Modal>
+
+      {/* ── Modal: API Import & Integration Center ─────────────────────────── */}
+      <ApiImportModal
+        open={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={loadData}
+      />
     </div>
   );
 }

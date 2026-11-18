@@ -1,31 +1,34 @@
 import { Request, Response } from 'express';
-import { openapiService } from './openapi.service.js';
+import { openapiService, ImportFormat } from './openapi.service.js';
 
 export const openapiController = {
   preview: async (req: Request, res: Response) => {
     try {
-      const { rawContent, url, projectId } = req.body;
-      if (!projectId) {
-        return res.status(400).json({ message: 'projectId is required' });
-      }
-      const preview = await openapiService.previewSpec({ rawContent, url, projectId });
+      const { rawContent, url, projectId, format } = req.body;
+      const preview = await openapiService.previewSpec({
+        rawContent,
+        url,
+        projectId: projectId || undefined,
+        format: format as ImportFormat,
+      });
       return res.json(preview);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || 'Failed to parse OpenAPI specification' });
+      return res.status(400).json({ message: err.message || 'Failed to parse API specification or routes' });
     }
   },
 
   importSpec: async (req: Request, res: Response) => {
     try {
-      const { projectId, endpoints } = req.body;
-      if (!projectId || !Array.isArray(endpoints)) {
-        return res.status(400).json({ message: 'projectId and endpoints array are required' });
+      const { projectId, endpoints, newProjectData } = req.body;
+      if ((!projectId && !newProjectData) || !Array.isArray(endpoints)) {
+        return res.status(400).json({
+          message: 'Either projectId or newProjectData, along with an endpoints array, is required',
+        });
       }
-      const result = await openapiService.applyImport(projectId, endpoints);
+      const result = await openapiService.applyImport(projectId, endpoints, newProjectData);
       return res.json(result);
     } catch (err: any) {
-      return res.status(400).json({ message: err.message || 'Failed to apply OpenAPI import' });
+      return res.status(400).json({ message: err.message || 'Failed to apply API import' });
     }
   },
 };
-
