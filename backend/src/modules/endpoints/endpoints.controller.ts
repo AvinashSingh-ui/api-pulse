@@ -4,7 +4,7 @@ import axios from 'axios';
 import { db } from '../../db/store.js';
 import { sqliteService } from '../../db/sqlite.js';
 import { postgresService } from '../../db/postgres.js';
-import type { Endpoint, RequestLog, HttpMethod, Alert } from '../../types/index.js';
+import type { Endpoint, RequestLog, HttpMethod, Alert, AppNotification } from '../../types/index.js';
 import { aiService } from '../ai/ai.service.js';
 import { healthService } from '../monitoring/health.service.js';
 import { notificationService } from '../notifications/notification.service.js';
@@ -591,8 +591,14 @@ export const endpointsController = {
       );
 
       const results: any[] = [];
+      const triggeredNotifications: AppNotification[] = [];
+      let healthyCount = 0;
+      let degradedCount = 0;
+      let unhealthyCount = 0;
+
       for (const ep of endpointsToCheck) {
         try {
+          const prevStatus = ep.status;
           const project = db.projects.find(p => p.id === ep.projectId);
           if (!project) continue;
 
@@ -646,9 +652,19 @@ export const endpointsController = {
           } catch (err: any) {
             measuredRt = Date.now() - startTime;
             isSuccess = false;
-            failureType = err.code === 'ECONNABORTED' ? 'timeout' : 'network_error';
-            statusCode = err.code === 'ECONNABORTED' ? 504 : 503;
-            errorMessage = err.message || 'Connection failed';
+            if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+              failureType = 'timeout';
+              statusCode = 504;
+              errorMessage = `Request timed out after ${ep.timeout || 5000}ms`;
+            } else if (err.code === 'ECONNREFUSED') {
+              failureType = 'connection_refused';
+              statusCode = 502;
+              errorMessage = 'ECONNREFUSED: Server unreachable';
+            } else {
+              failureType = 'network_error';
+              statusCode = 503;
+              errorMessage = err.message || 'Target host connection error';
+            }
           }
 
           // RequestLog
@@ -670,6 +686,15 @@ export const endpointsController = {
           };
           db.logs.unshift(newLog);
           if (db.logs.length > 500) db.logs.pop();
+
+          if (sqliteService.isConnected) {
+            try {
+              sqliteService.execute(
+                'INSERT INTO request_logs (id, endpoint_id, project_id, method, path, status_code, response_time_ms, request_size, response_size, ip_address, user_agent, failure_type, error_message, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [newLog.id, newLog.endpointId, newLog.projectId, newLog.method, newLog.path, newLog.statusCode, newLog.responseTime, newLog.requestSize, newLog.responseSize, newLog.ip, newLog.userAgent, newLog.failureType, newLog.error || null, newLog.timestamp]
+              );
+            } catch {}
+          }
 
           const recentLogs = db.logs.filter(l => l.endpointId === ep.id);
           const healthResult = healthService.calculateHealth({
@@ -701,9 +726,86 @@ export const endpointsController = {
             } catch {}
           }
 
-          // Trigger AI Analysis if degraded or down
+          // Alerts Management
           if (ep.status === 'down' || ep.status === 'degraded') {
-            aiService.analyzeEndpoint(ep.id).catch(() => null);
+            const existingAlert = db.alerts.find(a => a.endpointId === ep.id && a.status === 'active');
+            if (!existingAlert) {
+              const raisedAlert: Alert = {
+                id: `alt_${uuidv4().slice(0, 8)}`,
+                ruleId: 'system_auto_detector',
+                projectId: ep.projectId,
+                endpointId: ep.id,
+                title: ep.status === 'down'
+                  ? `Outage Detected: ${ep.method} ${ep.path} is DOWN`
+                  : `Health Degraded on ${ep.method} ${ep.path}`,
+                message: ep.degradationReason || `Health check failed: HTTP ${statusCode} in ${measuredRt}ms`,
+                severity: ep.status === 'down' ? 'critical' : 'high',
+                status: 'active',
+                triggeredAt: new Date().toISOString(),
+                value: statusCode,
+                threshold: ep.expectedStatus || 200,
+              };
+
+              if (sqliteService.isConnected) {
+                try {
+                  sqliteService.execute(
+                    'INSERT INTO alerts (id, rule_id, project_id, endpoint_id, title, message, severity, status, triggered_at, current_value, threshold_value) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [raisedAlert.id, raisedAlert.ruleId, raisedAlert.projectId, raisedAlert.endpointId, raisedAlert.title, raisedAlert.message, raisedAlert.severity, raisedAlert.status, raisedAlert.triggeredAt, raisedAlert.value, raisedAlert.threshold]
+                  );
+                } catch {}
+              }
+
+              db.alerts.unshift(raisedAlert);
+              if (db.alerts.length > 200) db.alerts.pop();
+
+              // Trigger AI Analysis in background
+              aiService.analyzeEndpoint(ep.id).catch(() => null);
+            }
+          } else {
+            // Auto-resolve active alerts when healthy
+            const activeForEp = db.alerts.filter(a => a.endpointId === ep.id && a.status === 'active');
+            for (const a of activeForEp) {
+              a.status = 'resolved';
+              a.resolvedAt = new Date().toISOString();
+              if (sqliteService.isConnected) {
+                try {
+                  sqliteService.execute('UPDATE alerts SET status = ?, resolved_at = ? WHERE id = ?', ['resolved', a.resolvedAt, a.id]);
+                } catch {}
+              }
+            }
+          }
+
+          // Trigger intelligent health alerts & notifications
+          const triggeredNotification = notificationService.handleHealthTransition({
+            endpoint: ep,
+            prevStatus,
+            newStatus: ep.status,
+            statusCode,
+            responseTime: measuredRt,
+            healthScore: ep.healthScore,
+            degradationReason: ep.degradationReason,
+            failureType,
+          });
+
+          if (triggeredNotification) {
+            triggeredNotifications.push(triggeredNotification);
+          }
+
+          // Count statuses
+          if (ep.status === 'healthy') healthyCount++;
+          else if (ep.status === 'degraded') degradedCount++;
+          else unhealthyCount++;
+
+          // Update parent project average health score
+          const projectEndpoints = db.endpoints.filter(e => e.projectId === project.id);
+          if (projectEndpoints.length > 0) {
+            const totalHealth = projectEndpoints.reduce((sum, e) => sum + (e.healthScore ?? 100), 0);
+            project.healthScore = Math.round(totalHealth / projectEndpoints.length);
+            if (sqliteService.isConnected) {
+              try {
+                sqliteService.execute('UPDATE projects SET health_score = ? WHERE id = ?', [project.healthScore, project.id]);
+              } catch {}
+            }
           }
 
           results.push({
@@ -715,6 +817,11 @@ export const endpointsController = {
             statusCode,
             responseTime: measuredRt,
             healthScore: ep.healthScore,
+            degradationReason: ep.degradationReason,
+            uptime: ep.uptime,
+            responseTimeP50: ep.responseTimeP50,
+            responseTimeP95: ep.responseTimeP95,
+            lastChecked: ep.lastChecked,
           });
         } catch (err: any) {
           console.warn(`[Endpoints] Error checking ${ep.id}:`, err.message);
@@ -725,6 +832,10 @@ export const endpointsController = {
       return res.json({
         message: `Successfully executed health checks for ${results.length} endpoint(s).`,
         totalChecked: results.length,
+        healthyCount,
+        degradedCount,
+        unhealthyCount,
+        notifications: triggeredNotifications,
         results,
       });
     } catch (err: any) {

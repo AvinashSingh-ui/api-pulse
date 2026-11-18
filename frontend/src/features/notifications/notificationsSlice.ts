@@ -13,7 +13,7 @@ function loadStoredPreferences(): NotificationPreferences {
   return {
     soundEnabled: true,
     soundOnCritical: true,
-    soundOnWarning: false,
+    soundOnWarning: true,
     soundOnRecovery: true,
     inAppAlertsEnabled: true,
   };

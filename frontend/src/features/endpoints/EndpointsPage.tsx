@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Table, Input, Select, Button, Space, Tag, Tooltip,
   Progress, Card, Modal, Form, message, notification, Popconfirm, Spin, Typography, InputNumber,
@@ -10,9 +10,12 @@ import {
   EditOutlined, CopyOutlined, CheckCircleOutlined,
   WarningOutlined, CloseCircleOutlined, InfoCircleOutlined,
   LinkOutlined, ImportOutlined, RobotOutlined, BulbOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
+import { useAppDispatch } from '@/app/hooks';
+import { apiSlice } from '@/services/apiSlice';
 import { PageHeader }    from '@/components/common/PageHeader';
 import { HttpMethodTag } from '@/components/common/HttpMethodTag';
 import { EmptyState }    from '@/components/common/EmptyState';
@@ -61,9 +64,12 @@ export default function EndpointsPage() {
   const enteredEditPath = Form.useWatch('path', editForm);
 
   // Live Auto-Refresh & Monitoring Telemetry Engine
+  const dispatch = useAppDispatch();
   const [autoRefreshSec, setAutoRefreshSec] = useState<number>(60);
   const [countdown, setCountdown] = useState<number>(60);
   const [isCheckingAll, setIsCheckingAll] = useState<boolean>(false);
+  const [isAutoRunning, setIsAutoRunning] = useState<boolean>(false);
+  const isAutoRunningRef = useRef<boolean>(false);
 
   // Gemini AI Diagnosis Modal State
   const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
@@ -93,7 +99,7 @@ export default function EndpointsPage() {
   };
 
   // Silent background refresh for seamless live updates without screen flicker
-  const loadDataSilently = async () => {
+  const loadDataSilently = useCallback(async () => {
     try {
       const epsRes = await endpointsService.list({
         search: search || undefined,
@@ -107,36 +113,90 @@ export default function EndpointsPage() {
     } catch {
       // background update silently ignores network blips
     }
-  };
+  }, [search, method, status, project]);
 
-  // Automated 60-second cycle timer
+  // Execute automated or manual live verification cycle
+  const runAutomatedCycle = useCallback(async (isManualTrigger = false) => {
+    if (isAutoRunningRef.current) return;
+    isAutoRunningRef.current = true;
+    if (!isManualTrigger) {
+      setIsAutoRunning(true);
+    } else {
+      setIsCheckingAll(true);
+    }
+
+    try {
+      const targetProjId = project !== 'all' ? project : undefined;
+      const res = await endpointsService.checkAll(targetProjId);
+
+      // 1. Immediately invalidate RTK query tags to sync notifications & alerts bell in real-time
+      dispatch(apiSlice.util.invalidateTags(['Notifications', 'HealthStats', 'Alerts']));
+
+      // 2. Fetch fresh endpoints list to update the table immediately with real live measurements
+      await loadDataSilently();
+
+      // 3. Display live completion toast
+      const totalChecked = res.totalChecked ?? res.results?.length ?? 0;
+      const healthy = res.healthyCount ?? res.results?.filter((r: any) => r.status === 'healthy').length ?? 0;
+      const degraded = res.degradedCount ?? res.results?.filter((r: any) => r.status === 'degraded').length ?? 0;
+      const unhealthy = res.unhealthyCount ?? res.results?.filter((r: any) => r.status === 'down' || r.status === 'unhealthy').length ?? 0;
+      const issues = degraded + unhealthy;
+
+      if (isManualTrigger) {
+        message.success(res.message || `Health checks executed for all endpoints.`);
+      } else {
+        notification.open({
+          key: 'automated-cycle-notice',
+          icon: <ThunderboltOutlined style={{ color: issues > 0 ? '#f59e0b' : '#10b981' }} />,
+          message: 'Live Monitoring Cycle Complete',
+          description: (
+            <div>
+              <div style={{ color: '#334155', fontSize: 13, marginBottom: 4 }}>
+                Automated health tests executed for <strong>{totalChecked}</strong> endpoint{totalChecked !== 1 ? 's' : ''}.
+              </div>
+              <Space size={6}>
+                <Tag color="success">{healthy} Healthy</Tag>
+                {issues > 0 ? (
+                  <Tag color="error">{issues} Issue{issues > 1 ? 's' : ''} Detected</Tag>
+                ) : (
+                  <Tag color="cyan">All Systems Operational</Tag>
+                )}
+              </Space>
+            </div>
+          ),
+          placement: 'topRight',
+          duration: 3.5,
+        });
+      }
+    } catch (err: any) {
+      if (isManualTrigger) {
+        message.error(err.response?.data?.message || 'Failed to run batch health checks');
+      }
+    } finally {
+      isAutoRunningRef.current = false;
+      setIsAutoRunning(false);
+      setIsCheckingAll(false);
+    }
+  }, [project, dispatch, loadDataSilently]);
+
+  // Automated live cycle timer
   useEffect(() => {
     if (autoRefreshSec <= 0) return;
     const interval = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
-          loadDataSilently();
+          runAutomatedCycle(false);
           return autoRefreshSec;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [autoRefreshSec, search, method, status, project]);
+  }, [autoRefreshSec, runAutomatedCycle]);
 
   const handleRunAllChecks = async () => {
-    setIsCheckingAll(true);
-    try {
-      const targetProjId = project !== 'all' ? project : undefined;
-      const res = await endpointsService.checkAll(targetProjId);
-      message.success(res.message || `Health checks executed for all endpoints.`);
-      await loadData();
-      setCountdown(autoRefreshSec > 0 ? autoRefreshSec : 60);
-    } catch (err: any) {
-      message.error(err.response?.data?.message || 'Failed to run batch health checks');
-    } finally {
-      setIsCheckingAll(false);
-    }
+    await runAutomatedCycle(true);
+    setCountdown(autoRefreshSec > 0 ? autoRefreshSec : 60);
   };
 
   const handleOpenAiDiagnosis = async (ep: Endpoint, e: React.MouseEvent) => {
@@ -556,15 +616,27 @@ export default function EndpointsPage() {
         actions={
           <Space wrap size={10}>
             {autoRefreshSec > 0 ? (
-              <Badge
-                status="processing"
-                color="#22c55e"
-                text={
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                    Live: {countdown}s
-                  </span>
-                }
-              />
+              isAutoRunning ? (
+                <Badge
+                  status="processing"
+                  color="#0284c7"
+                  text={
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                      <SyncOutlined spin /> Live Testing...
+                    </span>
+                  }
+                />
+              ) : (
+                <Badge
+                  status="processing"
+                  color="#22c55e"
+                  text={
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
+                      Live: {countdown}s
+                    </span>
+                  }
+                />
+              )
             ) : (
               <Badge
                 status="default"

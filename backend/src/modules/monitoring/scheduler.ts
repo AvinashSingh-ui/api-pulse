@@ -5,6 +5,7 @@ import { sqliteService } from '../../db/sqlite.js';
 import type { Endpoint, RequestLog, Alert } from '../../types/index.js';
 import { healthService } from './health.service.js';
 import { notificationService } from '../notifications/notification.service.js';
+import { aiService } from '../ai/ai.service.js';
 
 class MonitoringScheduler {
   private timer: NodeJS.Timeout | null = null;
@@ -221,6 +222,10 @@ class MonitoringScheduler {
           threshold: endpoint.expectedStatus || 200,
         };
         db.alerts.unshift(autoAlert);
+        if (db.alerts.length > 200) db.alerts.pop();
+
+        // Trigger AI Root Cause Analysis in background
+        aiService.analyzeEndpoint(endpoint.id).catch(() => null);
       }
     } else {
       // Auto-resolve when restored

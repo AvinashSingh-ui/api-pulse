@@ -4,7 +4,7 @@ import { config } from '../../config/index.js';
 import { db } from '../../db/store.js';
 import type { AIInsight, Endpoint, RequestLog } from '../../types/index.js';
 
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-3-flash-preview'];
+const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-3-flash-preview'];
 
 async function requestGemini(prompt: string, jsonMode = false): Promise<string | null> {
   const apiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;

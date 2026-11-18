@@ -38,6 +38,10 @@ export const endpointsService = {
     api.post<{
       message: string;
       totalChecked: number;
+      healthyCount?: number;
+      degradedCount?: number;
+      unhealthyCount?: number;
+      notifications?: any[];
       results: any[];
     }>('/endpoints/check-all', { projectId }).then(r => r.data),
 };
