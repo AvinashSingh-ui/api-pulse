@@ -104,19 +104,53 @@ class MonitoringScheduler {
         failureType = 'network_error';
         errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
       } else {
-        const isMutation = endpoint.method !== 'GET' && endpoint.method !== 'HEAD';
+        const methodUpper = (endpoint.method || 'GET').toUpperCase();
+        const hasRequestBody = methodUpper === 'POST' || methodUpper === 'PUT' || methodUpper === 'PATCH';
+
+        // Parse custom headers
+        let customHeaders: Record<string, string> = {};
+        if (endpoint.headers) {
+          if (typeof endpoint.headers === 'string') {
+            try { customHeaders = JSON.parse(endpoint.headers); } catch {}
+          } else if (typeof endpoint.headers === 'object') {
+            customHeaders = { ...endpoint.headers };
+          }
+        }
+
         const requestHeaders: Record<string, string> = {
           'Accept': 'application/json, text/plain, */*',
-          ...(isMutation ? { 'Content-Type': 'application/json' } : {}),
-          ...(endpoint.headers || {}),
+          ...(hasRequestBody ? { 'Content-Type': 'application/json' } : {}),
+          ...customHeaders,
         };
+
+        // Parse body
+        let requestData: any = undefined;
+        if (endpoint.body !== undefined && endpoint.body !== null && endpoint.body !== '') {
+          if (typeof endpoint.body === 'string') {
+            const trimmed = endpoint.body.trim();
+            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+              try {
+                requestData = JSON.parse(trimmed);
+              } catch {
+                requestData = trimmed;
+              }
+            } else {
+              requestData = trimmed;
+            }
+          } else {
+            requestData = endpoint.body;
+          }
+        } else if (hasRequestBody) {
+          requestData = {};
+        }
+
         const response = await axios({
-          method: endpoint.method.toLowerCase(),
+          method: methodUpper.toLowerCase(),
           url: resolvedUrl,
-          timeout: Math.min(endpoint.timeout || 5000, 5000),
+          timeout: Math.min(endpoint.timeout || 5000, 10000),
           validateStatus: () => true, // Don't throw on non-2xx
           headers: requestHeaders,
-          data: isMutation ? (endpoint.body || {}) : undefined,
+          data: requestData,
         });
         measuredRt = Date.now() - startTime;
         statusCode = response.status;

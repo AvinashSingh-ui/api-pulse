@@ -129,6 +129,19 @@ export const endpointsController = {
       });
     }
 
+    let normalizedHeaders: Record<string, string> = {};
+    if (headers) {
+      if (typeof headers === 'string') {
+        try { normalizedHeaders = JSON.parse(headers); } catch {}
+      } else if (typeof headers === 'object') {
+        normalizedHeaders = headers;
+      }
+    }
+
+    const normalizedBody = body !== undefined && body !== null && body !== ''
+      ? (typeof body === 'string' ? body : JSON.stringify(body))
+      : undefined;
+
     const newEndpoint: Endpoint = {
       id: `e_${uuidv4().slice(0, 8)}`,
       projectId,
@@ -143,8 +156,8 @@ export const endpointsController = {
       interval: Number(interval) || 60,
       expectedStatus: Number(expectedStatus) || 200,
       timeout: Number(timeout) || 5000,
-      headers,
-      body,
+      headers: normalizedHeaders,
+      body: normalizedBody,
       responseTimeP50: 0,
       responseTimeP95: 0,
       responseTimeP99: 0,
@@ -159,8 +172,8 @@ export const endpointsController = {
     if (sqliteService.isConnected) {
       try {
         sqliteService.execute(
-          'INSERT OR REPLACE INTO endpoints (id, project_id, name, path, method, status, interval_sec, expected_status, timeout_ms, p50_ms, p95_ms, p99_ms, uptime, requests_per_min, error_rate, health_score, degradation_reason, last_status_code, latency_threshold_ms, last_checked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [newEndpoint.id, newEndpoint.projectId, newEndpoint.name, newEndpoint.path, newEndpoint.method, newEndpoint.status, newEndpoint.interval, newEndpoint.expectedStatus, newEndpoint.timeout, newEndpoint.responseTimeP50, newEndpoint.responseTimeP95, newEndpoint.responseTimeP99, newEndpoint.uptime, newEndpoint.requestsPerMin, newEndpoint.errorRate, newEndpoint.healthScore, newEndpoint.degradationReason, newEndpoint.lastStatusCode || null, newEndpoint.latencyThresholdMs, newEndpoint.lastChecked]
+          'INSERT OR REPLACE INTO endpoints (id, project_id, name, path, method, status, interval_sec, expected_status, timeout_ms, p50_ms, p95_ms, p99_ms, uptime, requests_per_min, error_rate, health_score, degradation_reason, last_status_code, latency_threshold_ms, headers, body, last_checked) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [newEndpoint.id, newEndpoint.projectId, newEndpoint.name, newEndpoint.path, newEndpoint.method, newEndpoint.status, newEndpoint.interval, newEndpoint.expectedStatus, newEndpoint.timeout, newEndpoint.responseTimeP50, newEndpoint.responseTimeP95, newEndpoint.responseTimeP99, newEndpoint.uptime, newEndpoint.requestsPerMin, newEndpoint.errorRate, newEndpoint.healthScore, newEndpoint.degradationReason, newEndpoint.lastStatusCode || null, newEndpoint.latencyThresholdMs, JSON.stringify(newEndpoint.headers || {}), newEndpoint.body || null, newEndpoint.lastChecked]
         );
       } catch (err: any) {
         console.warn('[Endpoints] SQLite insert error:', err.message);
@@ -233,6 +246,20 @@ export const endpointsController = {
       }
     }
 
+    let updatedHeaders = existing.headers;
+    if (req.body.headers !== undefined) {
+      if (typeof req.body.headers === 'string') {
+        try { updatedHeaders = JSON.parse(req.body.headers); } catch { updatedHeaders = {}; }
+      } else if (typeof req.body.headers === 'object') {
+        updatedHeaders = req.body.headers;
+      }
+    }
+
+    let updatedBody = existing.body;
+    if (req.body.body !== undefined) {
+      updatedBody = typeof req.body.body === 'string' ? req.body.body : JSON.stringify(req.body.body);
+    }
+
     const updated: Endpoint = {
       ...existing,
       ...req.body,
@@ -240,6 +267,8 @@ export const endpointsController = {
       projectId: existing.projectId,
       path: cleanPath,
       method: updatedMethod,
+      headers: updatedHeaders,
+      body: updatedBody,
       interval: req.body.interval !== undefined ? Number(req.body.interval) : existing.interval,
       expectedStatus: req.body.expectedStatus !== undefined ? Number(req.body.expectedStatus) : existing.expectedStatus,
       timeout: req.body.timeout !== undefined ? Number(req.body.timeout) : existing.timeout,
@@ -251,8 +280,8 @@ export const endpointsController = {
     if (sqliteService.isConnected) {
       try {
         sqliteService.execute(
-          'UPDATE endpoints SET name = ?, path = ?, method = ?, status = ?, interval_sec = ?, expected_status = ?, timeout_ms = ?, latency_threshold_ms = ? WHERE id = ?',
-          [updated.name, updated.path, updated.method, updated.status, updated.interval, updated.expectedStatus, updated.timeout, updated.latencyThresholdMs, id]
+          'UPDATE endpoints SET name = ?, path = ?, method = ?, status = ?, interval_sec = ?, expected_status = ?, timeout_ms = ?, latency_threshold_ms = ?, headers = ?, body = ? WHERE id = ?',
+          [updated.name, updated.path, updated.method, updated.status, updated.interval, updated.expectedStatus, updated.timeout, updated.latencyThresholdMs, JSON.stringify(updated.headers || {}), updated.body || null, id]
         );
       } catch (err: any) {
         console.warn('[Endpoints] SQLite update error:', err.message);
@@ -352,19 +381,53 @@ export const endpointsController = {
           failureType = 'network_error';
           errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
         } else {
-          const isMutation = endpoint.method !== 'GET' && endpoint.method !== 'HEAD';
+          const methodUpper = (endpoint.method || 'GET').toUpperCase();
+          const hasRequestBody = methodUpper === 'POST' || methodUpper === 'PUT' || methodUpper === 'PATCH';
+
+          // Parse custom headers
+          let customHeaders: Record<string, string> = {};
+          if (endpoint.headers) {
+            if (typeof endpoint.headers === 'string') {
+              try { customHeaders = JSON.parse(endpoint.headers); } catch {}
+            } else if (typeof endpoint.headers === 'object') {
+              customHeaders = { ...endpoint.headers };
+            }
+          }
+
           const requestHeaders: Record<string, string> = {
             'Accept': 'application/json, text/plain, */*',
-            ...(isMutation ? { 'Content-Type': 'application/json' } : {}),
-            ...(endpoint.headers || {}),
+            ...(hasRequestBody ? { 'Content-Type': 'application/json' } : {}),
+            ...customHeaders,
           };
+
+          // Parse body
+          let requestData: any = undefined;
+          if (endpoint.body !== undefined && endpoint.body !== null && endpoint.body !== '') {
+            if (typeof endpoint.body === 'string') {
+              const trimmed = endpoint.body.trim();
+              if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                try {
+                  requestData = JSON.parse(trimmed);
+                } catch {
+                  requestData = trimmed;
+                }
+              } else {
+                requestData = trimmed;
+              }
+            } else {
+              requestData = endpoint.body;
+            }
+          } else if (hasRequestBody) {
+            requestData = {};
+          }
+
           const response = await axios({
-            method: endpoint.method.toLowerCase(),
+            method: methodUpper.toLowerCase(),
             url: resolvedUrl,
-            timeout: Math.min(endpoint.timeout || 5000, 5000),
+            timeout: Math.min(endpoint.timeout || 5000, 10000),
             validateStatus: () => true, // Don't throw on 4xx/5xx so we read actual HTTP status code
             headers: requestHeaders,
-            data: isMutation ? (endpoint.body || {}) : undefined,
+            data: requestData,
           });
           measuredRt = Date.now() - startTime;
           statusCode = response.status;
@@ -627,19 +690,53 @@ export const endpointsController = {
               failureType = 'network_error';
               errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
             } else {
-              const isMutation = ep.method !== 'GET' && ep.method !== 'HEAD';
+              const methodUpper = (ep.method || 'GET').toUpperCase();
+              const hasRequestBody = methodUpper === 'POST' || methodUpper === 'PUT' || methodUpper === 'PATCH';
+
+              // Parse custom headers
+              let customHeaders: Record<string, string> = {};
+              if (ep.headers) {
+                if (typeof ep.headers === 'string') {
+                  try { customHeaders = JSON.parse(ep.headers); } catch {}
+                } else if (typeof ep.headers === 'object') {
+                  customHeaders = { ...ep.headers };
+                }
+              }
+
               const requestHeaders: Record<string, string> = {
                 'Accept': 'application/json, text/plain, */*',
-                ...(isMutation ? { 'Content-Type': 'application/json' } : {}),
-                ...(ep.headers || {}),
+                ...(hasRequestBody ? { 'Content-Type': 'application/json' } : {}),
+                ...customHeaders,
               };
+
+              // Parse body
+              let requestData: any = undefined;
+              if (ep.body !== undefined && ep.body !== null && ep.body !== '') {
+                if (typeof ep.body === 'string') {
+                  const trimmed = ep.body.trim();
+                  if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                    try {
+                      requestData = JSON.parse(trimmed);
+                    } catch {
+                      requestData = trimmed;
+                    }
+                  } else {
+                    requestData = trimmed;
+                  }
+                } else {
+                  requestData = ep.body;
+                }
+              } else if (hasRequestBody) {
+                requestData = {};
+              }
+
               const response = await axios({
-                method: ep.method.toLowerCase(),
+                method: methodUpper.toLowerCase(),
                 url: resolvedUrl,
-                timeout: Math.min(ep.timeout || 5000, 5000),
+                timeout: Math.min(ep.timeout || 5000, 10000),
                 validateStatus: () => true,
                 headers: requestHeaders,
-                data: isMutation ? (ep.body || {}) : undefined,
+                data: requestData,
               });
               measuredRt = Date.now() - startTime;
               statusCode = response.status;

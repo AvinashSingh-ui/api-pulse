@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Table, Input, Select, Button, Space, Tag, Tooltip,
   Progress, Card, Modal, Form, message, notification, Popconfirm, Spin, Typography, InputNumber,
-  Badge, Empty,
+  Badge, Empty, Divider,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined,
@@ -55,6 +55,7 @@ export default function EndpointsPage() {
   const [createForm] = Form.useForm();
   const selectedCreateProjectId = Form.useWatch('projectId', createForm);
   const enteredCreatePath = Form.useWatch('path', createForm);
+  const selectedCreateMethod = Form.useWatch('method', createForm) || 'GET';
 
   // Edit Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -62,6 +63,7 @@ export default function EndpointsPage() {
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [editForm] = Form.useForm();
   const enteredEditPath = Form.useWatch('path', editForm);
+  const selectedEditMethod = Form.useWatch('method', editForm) || editingEndpoint?.method || 'GET';
 
   // Live Auto-Refresh & Monitoring Telemetry Engine
   const dispatch = useAppDispatch();
@@ -238,6 +240,8 @@ export default function EndpointsPage() {
       expectedStatus: 200,
       timeout: 5000,
       latencyThresholdMs: 500,
+      headersText: '',
+      body: '',
       tags: [],
     });
     setIsCreateModalOpen(true);
@@ -249,6 +253,17 @@ export default function EndpointsPage() {
       setIsSubmittingCreate(true);
       const cleanPath = values.path.trim().startsWith('/') ? values.path.trim() : `/${values.path.trim()}`;
 
+      let parsedHeaders: Record<string, string> | undefined = undefined;
+      if (values.headersText && values.headersText.trim()) {
+        try {
+          parsedHeaders = JSON.parse(values.headersText.trim());
+        } catch {
+          message.error('Invalid JSON syntax in Request Headers');
+          setIsSubmittingCreate(false);
+          return;
+        }
+      }
+
       const created = await endpointsService.create({
         projectId: values.projectId,
         name: values.name.trim(),
@@ -258,6 +273,8 @@ export default function EndpointsPage() {
         expectedStatus: values.expectedStatus || 200,
         timeout: values.timeout || 5000,
         latencyThresholdMs: values.latencyThresholdMs || 500,
+        headers: parsedHeaders,
+        body: values.body?.trim() ? values.body.trim() : undefined,
         tags: values.tags || [],
       });
 
@@ -276,6 +293,17 @@ export default function EndpointsPage() {
   const handleOpenEditModal = (ep: Endpoint, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingEndpoint(ep);
+    let initialHeadersText = '';
+    if (ep.headers) {
+      try {
+        initialHeadersText = typeof ep.headers === 'string'
+          ? JSON.stringify(JSON.parse(ep.headers), null, 2)
+          : JSON.stringify(ep.headers, null, 2);
+      } catch {
+        initialHeadersText = String(ep.headers);
+      }
+    }
+
     editForm.setFieldsValue({
       name: ep.name,
       method: ep.method,
@@ -284,6 +312,8 @@ export default function EndpointsPage() {
       expectedStatus: ep.expectedStatus || 200,
       timeout: ep.timeout || 5000,
       latencyThresholdMs: ep.latencyThresholdMs || 500,
+      headersText: initialHeadersText,
+      body: ep.body || '',
       tags: ep.tags || [],
     });
     setIsEditModalOpen(true);
@@ -296,6 +326,17 @@ export default function EndpointsPage() {
       setIsSubmittingEdit(true);
       const cleanPath = values.path.trim().startsWith('/') ? values.path.trim() : `/${values.path.trim()}`;
 
+      let parsedHeaders: Record<string, string> = {};
+      if (values.headersText && values.headersText.trim()) {
+        try {
+          parsedHeaders = JSON.parse(values.headersText.trim());
+        } catch {
+          message.error('Invalid JSON syntax in Request Headers');
+          setIsSubmittingEdit(false);
+          return;
+        }
+      }
+
       const updated = await endpointsService.update(editingEndpoint.id, {
         name: values.name.trim(),
         method: values.method,
@@ -304,6 +345,8 @@ export default function EndpointsPage() {
         expectedStatus: values.expectedStatus,
         timeout: values.timeout,
         latencyThresholdMs: values.latencyThresholdMs,
+        headers: Object.keys(parsedHeaders).length > 0 ? parsedHeaders : {},
+        body: values.body !== undefined ? values.body.trim() : undefined,
         tags: values.tags || [],
       });
 
@@ -869,6 +912,127 @@ export default function EndpointsPage() {
           <Form.Item name="tags" label="Tags">
             <Select mode="tags" placeholder="e.g. auth, payments, critical" />
           </Form.Item>
+
+          <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+            Request Payload & Custom Headers
+          </Divider>
+
+          {(selectedCreateMethod === 'POST' || selectedCreateMethod === 'PUT' || selectedCreateMethod === 'PATCH') && (
+            <Form.Item
+              name="body"
+              label={
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <span>Request Body (JSON)</span>
+                  <Space size={6}>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, fontSize: 12 }}
+                      onClick={() => {
+                        createForm.setFieldValue('body', JSON.stringify({
+                          name: 'Sample Item',
+                          status: 'active',
+                          timestamp: new Date().toISOString()
+                        }, null, 2));
+                      }}
+                    >
+                      Insert Sample JSON
+                    </Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, fontSize: 12 }}
+                      onClick={() => {
+                        const cur = createForm.getFieldValue('body');
+                        if (cur) {
+                          try {
+                            createForm.setFieldValue('body', JSON.stringify(JSON.parse(cur), null, 2));
+                          } catch {
+                            message.error('Invalid JSON syntax');
+                          }
+                        }
+                      }}
+                    >
+                      Format JSON
+                    </Button>
+                  </Space>
+                </div>
+              }
+              rules={[
+                {
+                  validator: async (_, val) => {
+                    if (!val || !val.trim()) return;
+                    if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+                      try {
+                        JSON.parse(val.trim());
+                      } catch (err: any) {
+                        throw new Error('Invalid JSON syntax: ' + err.message);
+                      }
+                    }
+                  },
+                },
+              ]}
+              extra={
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                  JSON payload sent for {selectedCreateMethod} requests during automated and manual health checks.
+                </span>
+              }
+            >
+              <Input.TextArea
+                rows={4}
+                placeholder={`{\n  "name": "Apple iPhone 16",\n  "data": {\n    "price": 999\n  }\n}`}
+                style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+              />
+            </Form.Item>
+          )}
+
+          <Form.Item
+            name="headersText"
+            label={
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                <span>Custom Request Headers (JSON)</span>
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ padding: 0, fontSize: 12 }}
+                  onClick={() => {
+                    createForm.setFieldValue('headersText', JSON.stringify({
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json'
+                    }, null, 2));
+                  }}
+                >
+                  Default Headers
+                </Button>
+              </div>
+            }
+            rules={[
+              {
+                validator: async (_, val) => {
+                  if (!val || !val.trim()) return;
+                  try {
+                    const parsed = JSON.parse(val.trim());
+                    if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+                      throw new Error('Headers must be a valid JSON key-value object');
+                    }
+                  } catch (err: any) {
+                    throw new Error(err.message || 'Invalid JSON syntax');
+                  }
+                },
+              },
+            ]}
+            extra={
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                Optional JSON key-value pairs (e.g. Authorization, Api-Key, custom headers).
+              </span>
+            }
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder={`{\n  "Authorization": "Bearer token",\n  "x-api-key": "secret"\n}`}
+              style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+            />
+          </Form.Item>
         </Form>
       </Modal>
 
@@ -961,6 +1125,127 @@ export default function EndpointsPage() {
 
           <Form.Item name="tags" label="Tags">
             <Select mode="tags" />
+          </Form.Item>
+
+          <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+            Request Payload & Custom Headers
+          </Divider>
+
+          {(selectedEditMethod === 'POST' || selectedEditMethod === 'PUT' || selectedEditMethod === 'PATCH') && (
+            <Form.Item
+              name="body"
+              label={
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <span>Request Body (JSON)</span>
+                  <Space size={6}>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, fontSize: 12 }}
+                      onClick={() => {
+                        editForm.setFieldValue('body', JSON.stringify({
+                          name: 'Sample Item',
+                          status: 'active',
+                          timestamp: new Date().toISOString()
+                        }, null, 2));
+                      }}
+                    >
+                      Insert Sample JSON
+                    </Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      style={{ padding: 0, fontSize: 12 }}
+                      onClick={() => {
+                        const cur = editForm.getFieldValue('body');
+                        if (cur) {
+                          try {
+                            editForm.setFieldValue('body', JSON.stringify(JSON.parse(cur), null, 2));
+                          } catch {
+                            message.error('Invalid JSON syntax');
+                          }
+                        }
+                      }}
+                    >
+                      Format JSON
+                    </Button>
+                  </Space>
+                </div>
+              }
+              rules={[
+                {
+                  validator: async (_, val) => {
+                    if (!val || !val.trim()) return;
+                    if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+                      try {
+                        JSON.parse(val.trim());
+                      } catch (err: any) {
+                        throw new Error('Invalid JSON syntax: ' + err.message);
+                      }
+                    }
+                  },
+                },
+              ]}
+              extra={
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                  JSON payload sent for {selectedEditMethod} requests during automated and manual health checks.
+                </span>
+              }
+            >
+              <Input.TextArea
+                rows={4}
+                placeholder={`{\n  "name": "Apple iPhone 16",\n  "data": {\n    "price": 999\n  }\n}`}
+                style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+              />
+            </Form.Item>
+          )}
+
+          <Form.Item
+            name="headersText"
+            label={
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                <span>Custom Request Headers (JSON)</span>
+                <Button
+                  type="link"
+                  size="small"
+                  style={{ padding: 0, fontSize: 12 }}
+                  onClick={() => {
+                    editForm.setFieldValue('headersText', JSON.stringify({
+                      'Content-Type': 'application/json',
+                      'Accept': 'application/json'
+                    }, null, 2));
+                  }}
+                >
+                  Default Headers
+                </Button>
+              </div>
+            }
+            rules={[
+              {
+                validator: async (_, val) => {
+                  if (!val || !val.trim()) return;
+                  try {
+                    const parsed = JSON.parse(val.trim());
+                    if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+                      throw new Error('Headers must be a valid JSON key-value object');
+                    }
+                  } catch (err: any) {
+                    throw new Error(err.message || 'Invalid JSON syntax');
+                  }
+                },
+              },
+            ]}
+            extra={
+              <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                Optional JSON key-value pairs (e.g. Authorization, Api-Key, custom headers).
+              </span>
+            }
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder={`{\n  "Authorization": "Bearer token",\n  "x-api-key": "secret"\n}`}
+              style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+            />
           </Form.Item>
         </Form>
       </Modal>

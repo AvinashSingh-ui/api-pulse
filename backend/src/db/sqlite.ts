@@ -85,6 +85,8 @@ export class SQLiteService {
         degradation_reason TEXT,
         last_status_code INTEGER,
         latency_threshold_ms INTEGER DEFAULT 500,
+        headers TEXT,
+        body TEXT,
         last_checked TEXT DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
       );
@@ -181,6 +183,8 @@ export class SQLiteService {
     try { this.db.exec('ALTER TABLE endpoints ADD COLUMN degradation_reason TEXT'); } catch {}
     try { this.db.exec('ALTER TABLE endpoints ADD COLUMN last_status_code INTEGER'); } catch {}
     try { this.db.exec('ALTER TABLE endpoints ADD COLUMN latency_threshold_ms INTEGER DEFAULT 500'); } catch {}
+    try { this.db.exec('ALTER TABLE endpoints ADD COLUMN headers TEXT'); } catch {}
+    try { this.db.exec('ALTER TABLE endpoints ADD COLUMN body TEXT'); } catch {}
   }
 
   public query<T = any>(sql: string, params: any[] = []): T[] {

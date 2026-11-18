@@ -3,6 +3,7 @@ import {
   Card, Tabs, Button, Row, Col, Table, Tag, Space,
   Badge, Tooltip, message, notification, Modal, Form, Input,
   Select, Switch, InputNumber, Drawer, Alert as AntAlert, Spin,
+  Divider,
 } from 'antd';
 import {
   ArrowLeftOutlined, ThunderboltOutlined, ReloadOutlined,
@@ -105,9 +106,26 @@ export default function EndpointDetailPage() {
       }));
       setChecks(derivedChecks);
 
+      let initialHeaders = '';
+      if (epData.headers) {
+        try {
+          initialHeaders = typeof epData.headers === 'string'
+            ? JSON.stringify(JSON.parse(epData.headers), null, 2)
+            : JSON.stringify(epData.headers, null, 2);
+        } catch {
+          initialHeaders = String(epData.headers);
+        }
+      }
+
       settingsForm.setFieldsValue({
+        name: epData.name,
+        method: epData.method || 'GET',
+        path: epData.path,
+        expectedStatus: epData.expectedStatus || 200,
         interval: `${epData.interval || 60}s`,
         timeout: epData.timeout || 5000,
+        headersText: initialHeaders,
+        body: epData.body || '',
         retryCount: 2,
         active: epData.status !== 'paused',
       });
@@ -201,9 +219,37 @@ export default function EndpointDetailPage() {
         ? parseInt(rawInterval, 10) * 60
         : parseInt(rawInterval, 10);
 
+      let parsedHeaders: Record<string, string> = {};
+      if (values.headersText && values.headersText.trim()) {
+        try {
+          parsedHeaders = JSON.parse(values.headersText.trim());
+        } catch {
+          message.error('Invalid JSON syntax in Request Headers');
+          return;
+        }
+      }
+
+      if (values.body && values.body.trim()) {
+        if (values.body.trim().startsWith('{') || values.body.trim().startsWith('[')) {
+          try {
+            JSON.parse(values.body.trim());
+          } catch {
+            message.error('Invalid JSON syntax in Request Body');
+            return;
+          }
+        }
+      }
+
+      const cleanPath = values.path ? (values.path.trim().startsWith('/') ? values.path.trim() : `/${values.path.trim()}`) : endpoint.path;
+
       const updated = await endpointsService.update(endpoint.id, {
+        method: values.method || endpoint.method,
+        path: cleanPath,
+        expectedStatus: values.expectedStatus ? Number(values.expectedStatus) : endpoint.expectedStatus,
         interval: intervalSec || 60,
         timeout: values.timeout || 5000,
+        headers: parsedHeaders,
+        body: values.body !== undefined ? values.body.trim() : undefined,
         status: values.active ? (endpoint.status === 'paused' ? 'healthy' : endpoint.status) : 'paused',
       });
       setEndpoint(updated);
@@ -686,6 +732,141 @@ export default function EndpointDetailPage() {
                     }}
                     onFinish={handleSaveSettings}
                   >
+                    <Space style={{ display: 'flex', width: '100%' }} align="start">
+                      <Form.Item name="method" label="HTTP Method" style={{ width: 130 }} rules={[{ required: true }]}>
+                        <Select options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ label: m, value: m }))} />
+                      </Form.Item>
+                      <Form.Item name="path" label="Endpoint Path" style={{ flex: 1 }} rules={[{ required: true }]}>
+                        <Input placeholder="/api/v1/..." />
+                      </Form.Item>
+                    </Space>
+
+                    <Form.Item name="expectedStatus" label="Expected HTTP Status">
+                      <Select options={[200, 201, 204, 301, 302, 400, 401, 404, 500].map(c => ({ label: `HTTP ${c}`, value: c }))} />
+                    </Form.Item>
+
+                    <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+                      Request Payload & Custom Headers
+                    </Divider>
+
+                    <Form.Item
+                      name="body"
+                      label={
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                          <span>Request Body (JSON)</span>
+                          <Space size={6}>
+                            <Button
+                              type="link"
+                              size="small"
+                              style={{ padding: 0, fontSize: 12 }}
+                              onClick={() => {
+                                settingsForm.setFieldValue('body', JSON.stringify({
+                                  name: 'Sample Item',
+                                  status: 'active',
+                                  timestamp: new Date().toISOString()
+                                }, null, 2));
+                              }}
+                            >
+                              Insert Sample JSON
+                            </Button>
+                            <Button
+                              type="link"
+                              size="small"
+                              style={{ padding: 0, fontSize: 12 }}
+                              onClick={() => {
+                                const cur = settingsForm.getFieldValue('body');
+                                if (cur) {
+                                  try {
+                                    settingsForm.setFieldValue('body', JSON.stringify(JSON.parse(cur), null, 2));
+                                  } catch {
+                                    message.error('Invalid JSON syntax');
+                                  }
+                                }
+                              }}
+                            >
+                              Format JSON
+                            </Button>
+                          </Space>
+                        </div>
+                      }
+                      rules={[
+                        {
+                          validator: async (_, val) => {
+                            if (!val || !val.trim()) return;
+                            if (val.trim().startsWith('{') || val.trim().startsWith('[')) {
+                              try {
+                                JSON.parse(val.trim());
+                              } catch (err: any) {
+                                throw new Error('Invalid JSON syntax: ' + err.message);
+                              }
+                            }
+                          },
+                        },
+                      ]}
+                      extra={
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                          JSON payload sent during automated and manual health check pings.
+                        </span>
+                      }
+                    >
+                      <Input.TextArea
+                        rows={4}
+                        placeholder={`{\n  "name": "Apple iPhone 16",\n  "data": {\n    "price": 999\n  }\n}`}
+                        style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+                      />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="headersText"
+                      label={
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                          <span>Custom Request Headers (JSON)</span>
+                          <Button
+                            type="link"
+                            size="small"
+                            style={{ padding: 0, fontSize: 12 }}
+                            onClick={() => {
+                              settingsForm.setFieldValue('headersText', JSON.stringify({
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json'
+                              }, null, 2));
+                            }}
+                          >
+                            Default Headers
+                          </Button>
+                        </div>
+                      }
+                      rules={[
+                        {
+                          validator: async (_, val) => {
+                            if (!val || !val.trim()) return;
+                            try {
+                              const parsed = JSON.parse(val.trim());
+                              if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+                                throw new Error('Headers must be a valid JSON key-value object');
+                              }
+                            } catch (err: any) {
+                              throw new Error(err.message || 'Invalid JSON syntax');
+                            }
+                          },
+                        },
+                      ]}
+                      extra={
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                          Optional JSON key-value pairs (e.g. Authorization, Api-Key, custom headers).
+                        </span>
+                      }
+                    >
+                      <Input.TextArea
+                        rows={3}
+                        placeholder={`{\n  "Authorization": "Bearer token",\n  "x-api-key": "secret"\n}`}
+                        style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12 }}
+                      />
+                    </Form.Item>
+
+                    <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+                      Monitoring Probing Schedule
+                    </Divider>
                     <Form.Item name="interval" label="Health Check Interval">
                       <Select
                         options={[
