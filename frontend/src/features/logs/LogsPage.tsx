@@ -171,27 +171,34 @@ export default function LogsPage() {
   return (
     <div>
       <PageHeader
-        title="Request Logs"
+        title="Request Logs & Telemetry"
         subtitle="Real-time API request and response telemetry logs"
+        breadcrumbs={[{ label: 'Logs' }]}
         actions={
-          <Space>
+          <Space size={10}>
             <Button icon={<ReloadOutlined />} onClick={fetchLogs} loading={loading}>
               Refresh
             </Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExport} disabled={logs.length === 0}>
-              Export
+            <Button
+              type="primary"
+              className="btn-primary-gradient"
+              icon={<DownloadOutlined />}
+              onClick={handleExport}
+              disabled={logs.length === 0}
+            >
+              Export CSV
             </Button>
           </Space>
         }
       />
 
       {/* Summary */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+      <Row gutter={[20, 20]} style={{ marginBottom: 20 }}>
         <Col xs={24} sm={8}>
           <StatCard
             title="Total Requests Logged"
             value={total.toLocaleString()}
-            color="#4f8ef7"
+            color="#4f46e5"
             loading={loading}
           />
         </Col>
@@ -203,7 +210,7 @@ export default function LogsPage() {
                 ? `${((errorCount / logs.length) * 100).toFixed(1)}%`
                 : '0%'
             }
-            color="#ef4444"
+            color="#f43f5e"
             loading={loading}
           />
         </Col>
@@ -219,8 +226,9 @@ export default function LogsPage() {
 
       {/* Filters */}
       <Card
-        style={{ marginBottom: 16, borderRadius: 12 }}
-        styles={{ body: { padding: '14px 16px' } }}
+        className="card-modern"
+        style={{ marginBottom: 20 }}
+        styles={{ body: { padding: '14px 20px' } }}
       >
         <Space size={12} wrap>
           <Input
@@ -272,32 +280,33 @@ export default function LogsPage() {
           />
         </Card>
       ) : (
-        <Table
-          dataSource={logs}
-          columns={columns}
-          rowKey="id"
-          loading={loading}
-          onRow={(r) => ({
-            onClick: () => setSelected(r),
-            style: {
-              cursor: 'pointer',
-              background: r.statusCode >= 500 ? '#fff5f5' : undefined,
-            },
-          })}
-          pagination={{
-            current: page,
-            pageSize,
-            total,
-            onChange: (p, ps) => {
-              setPage(p);
-              setPageSize(ps);
-            },
-            showTotal: (t) => `${t} total requests`,
-          }}
-          scroll={{ x: 900 }}
-          style={{ background: '#fff', borderRadius: 12 }}
-          size="small"
-        />
+        <Card className="card-modern" styles={{ body: { padding: 0 } }}>
+          <Table
+            dataSource={logs}
+            columns={columns}
+            rowKey="id"
+            loading={loading}
+            onRow={(r) => ({
+              onClick: () => setSelected(r),
+              style: {
+                cursor: 'pointer',
+                background: r.statusCode >= 500 ? '#fff5f5' : undefined,
+              },
+            })}
+            pagination={{
+              current: page,
+              pageSize,
+              total,
+              onChange: (p, ps) => {
+                setPage(p);
+                setPageSize(ps);
+              },
+              showTotal: (t) => `${t.toLocaleString()} total request logs`,
+              style: { padding: '12px 20px' },
+            }}
+            scroll={{ x: 900 }}
+          />
+        </Card>
       )}
 
       {/* Log detail drawer */}

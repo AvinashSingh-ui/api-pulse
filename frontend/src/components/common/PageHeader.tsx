@@ -23,48 +23,65 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   actions,
   extra,
 }) => (
-  <div style={{ marginBottom: 20 }}>
+  <div style={{ marginBottom: 24 }}>
     {breadcrumbs.length > 0 && (
       <Breadcrumb
-        style={{ marginBottom: 8 }}
+        style={{ marginBottom: 10, fontSize: 13 }}
         items={[
           {
             title: (
-              <Link to="/">
-                <HomeOutlined />
+              <Link to="/" style={{ color: '#64748b', display: 'inline-flex', alignItems: 'center' }}>
+                <HomeOutlined style={{ fontSize: 13 }} />
               </Link>
             ),
           },
           ...breadcrumbs.map((b) => ({
-            title: b.path ? <Link to={b.path}>{b.label}</Link> : b.label,
+            title: b.path ? (
+              <Link to={b.path} style={{ color: '#64748b' }}>{b.label}</Link>
+            ) : (
+              <span style={{ color: '#0f172a', fontWeight: 600 }}>{b.label}</span>
+            ),
           })),
         ]}
       />
     )}
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      gap: 12,
-    }}>
-      <div style={{ minWidth: 200, flex: 1 }}>
-        <h1 style={{
-          fontSize: 22,
-          fontWeight: 700,
-          color: '#0f172a',
-          margin: 0,
-          lineHeight: 1.3,
-        }}>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 16,
+      }}
+    >
+      <div style={{ minWidth: 220, flex: 1 }}>
+        <h1
+          style={{
+            fontSize: 24,
+            fontWeight: 800,
+            color: '#0f172a',
+            margin: 0,
+            lineHeight: 1.25,
+            letterSpacing: '-0.025em',
+          }}
+        >
           {title}
         </h1>
         {subtitle && (
-          <p style={{ color: '#64748b', marginTop: 4, marginBottom: 0, fontSize: 13 }}>
+          <p
+            style={{
+              color: '#64748b',
+              marginTop: 4,
+              marginBottom: 0,
+              fontSize: 13,
+              fontWeight: 500,
+            }}
+          >
             {subtitle}
           </p>
         )}
       </div>
-      <Space wrap size={8}>
+      <Space wrap size={10} style={{ display: 'flex', alignItems: 'center' }}>
         {extra}
         {actions}
       </Space>

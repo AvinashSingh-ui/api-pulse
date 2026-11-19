@@ -64,7 +64,7 @@ const ProfileTab: React.FC = () => {
   };
 
   return (
-    <Card style={{ borderRadius: 12, maxWidth: 600 }}>
+    <Card className="card-modern" style={{ maxWidth: 640 }}>
       {/* Avatar row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
         <Avatar
@@ -122,9 +122,9 @@ const ProfileTab: React.FC = () => {
         <Form.Item>
           <Button
             type="primary"
+            className="btn-primary-gradient"
             htmlType="submit"
             loading={saving}
-            style={{ borderRadius: 8 }}
           >
             Save Changes
           </Button>
@@ -546,8 +546,9 @@ export default function SettingsPage() {
   return (
     <div>
       <PageHeader
-        title="Settings"
-        subtitle="Manage your account, notifications, and API access"
+        title="Settings & System Preferences"
+        subtitle="Manage your developer account, notifications, audio telemetry, and API access keys"
+        breadcrumbs={[{ label: 'Settings' }]}
       />
 
       <Tabs

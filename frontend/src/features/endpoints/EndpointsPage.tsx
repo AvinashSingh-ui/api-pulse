@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Table, Input, Select, Button, Space, Tag, Tooltip,
   Progress, Card, Modal, Form, message, notification, Popconfirm, Spin, Typography, InputNumber,
-  Badge, Empty, Divider,
+  Badge, Empty, Divider, Segmented,
 } from 'antd';
 import {
   PlusOutlined, SearchOutlined, ReloadOutlined,
@@ -10,14 +10,13 @@ import {
   EditOutlined, CopyOutlined, CheckCircleOutlined,
   WarningOutlined, CloseCircleOutlined, InfoCircleOutlined,
   LinkOutlined, ImportOutlined, RobotOutlined, BulbOutlined,
-  SyncOutlined,
+  SyncOutlined, FolderOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
 import { useAppDispatch } from '@/app/hooks';
 import { apiSlice } from '@/services/apiSlice';
 import { PageHeader }    from '@/components/common/PageHeader';
-import { HttpMethodTag } from '@/components/common/HttpMethodTag';
 import { EmptyState }    from '@/components/common/EmptyState';
 import { ApiImportModal } from '@/components/common/ApiImportModal';
 import { endpointsService } from '@/services/endpoints/endpoints';
@@ -138,54 +137,27 @@ export default function EndpointsPage() {
       await loadDataSilently();
 
       // 3. Display live completion toast
-      const totalChecked = res.totalChecked ?? res.results?.length ?? 0;
-      const healthy = res.healthyCount ?? res.results?.filter((r: any) => r.status === 'healthy').length ?? 0;
-      const degraded = res.degradedCount ?? res.results?.filter((r: any) => r.status === 'degraded').length ?? 0;
-      const unhealthy = res.unhealthyCount ?? res.results?.filter((r: any) => r.status === 'down' || r.status === 'unhealthy').length ?? 0;
-      const issues = degraded + unhealthy;
-
       if (isManualTrigger) {
-        message.success(res.message || `Health checks executed for all endpoints.`);
-      } else {
-        notification.open({
-          key: 'automated-cycle-notice',
-          icon: <ThunderboltOutlined style={{ color: issues > 0 ? '#f59e0b' : '#10b981' }} />,
-          message: 'Live Monitoring Cycle Complete',
-          description: (
-            <div>
-              <div style={{ color: '#334155', fontSize: 13, marginBottom: 4 }}>
-                Automated health tests executed for <strong>{totalChecked}</strong> endpoint{totalChecked !== 1 ? 's' : ''}.
-              </div>
-              <Space size={6}>
-                <Tag color="success">{healthy} Healthy</Tag>
-                {issues > 0 ? (
-                  <Tag color="error">{issues} Issue{issues > 1 ? 's' : ''} Detected</Tag>
-                ) : (
-                  <Tag color="cyan">All Systems Operational</Tag>
-                )}
-              </Space>
-            </div>
-          ),
-          placement: 'topRight',
-          duration: 3.5,
-        });
+        message.success(`Verified ${res.totalChecked} endpoints: ${res.healthyCount ?? 0} healthy, ${res.degradedCount ?? 0} degraded, ${res.unhealthyCount ?? 0} outages`);
       }
     } catch (err: any) {
       if (isManualTrigger) {
-        message.error(err.response?.data?.message || 'Failed to run batch health checks');
+        message.error(err.response?.data?.message || 'Failed to complete full endpoint check cycle');
       }
     } finally {
       isAutoRunningRef.current = false;
       setIsAutoRunning(false);
       setIsCheckingAll(false);
+      setCountdown(autoRefreshSec);
     }
-  }, [project, dispatch, loadDataSilently]);
+  }, [autoRefreshSec, dispatch, loadDataSilently, project]);
 
-  // Automated live cycle timer
+  // Handle countdown interval and automated trigger
   useEffect(() => {
     if (autoRefreshSec <= 0) return;
-    const interval = setInterval(() => {
-      setCountdown(prev => {
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
         if (prev <= 1) {
           runAutomatedCycle(false);
           return autoRefreshSec;
@@ -193,56 +165,54 @@ export default function EndpointsPage() {
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(interval);
+
+    return () => clearInterval(timer);
   }, [autoRefreshSec, runAutomatedCycle]);
 
-  const handleRunAllChecks = async () => {
-    await runAutomatedCycle(true);
-    setCountdown(autoRefreshSec > 0 ? autoRefreshSec : 60);
+  // Reload when manual filters change
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [method, status, project]);
+
+  // Debounced search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      loadDataSilently();
+    }, 350);
+    return () => clearTimeout(handler);
+  }, [search, loadDataSilently]);
+
+  const handleRunAllChecks = () => {
+    runAutomatedCycle(true);
   };
 
-  const handleOpenAiDiagnosis = async (ep: Endpoint, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleOpenAiDiagnosis = async (ep: Endpoint, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setSelectedAiEndpoint(ep);
     setIsAiModalOpen(true);
     setIsLoadingAi(true);
     setAiInsight(null);
+
     try {
       const insights = await aiService.analyzeEndpoint(ep.id);
-      if (insights && insights.length > 0) {
-        setAiInsight(insights[0]);
-      } else {
-        message.info('No diagnosis generated for this endpoint.');
-      }
-    } catch {
-      message.error('Failed to generate AI diagnosis');
+      setAiInsight(Array.isArray(insights) && insights.length > 0 ? insights[0] : null);
+    } catch (err: any) {
+      message.error(err.response?.data?.message || 'Failed to generate AI diagnosis. Please verify your Gemini API key in Settings.');
     } finally {
       setIsLoadingAi(false);
     }
   };
 
-  useEffect(() => {
-    loadData();
-  }, [search, method, status, project]);
-
   const handleOpenCreateModal = () => {
-    if (projects.length === 0) {
-      message.warning('Please create a project first before registering endpoints.');
-      navigate('/projects');
-      return;
-    }
+    createForm.resetFields();
     createForm.setFieldsValue({
-      projectId: project !== 'all' ? project : projects[0]?.id,
       method: 'GET',
-      path: '/api/v1/health',
-      name: '',
       interval: 60,
       expectedStatus: 200,
       timeout: 5000,
       latencyThresholdMs: 500,
-      headersText: '',
-      body: '',
-      tags: [],
+      projectId: projects[0]?.id,
     });
     setIsCreateModalOpen(true);
   };
@@ -253,7 +223,7 @@ export default function EndpointsPage() {
       setIsSubmittingCreate(true);
       const cleanPath = values.path.trim().startsWith('/') ? values.path.trim() : `/${values.path.trim()}`;
 
-      let parsedHeaders: Record<string, string> | undefined = undefined;
+      let parsedHeaders: Record<string, string> = {};
       if (values.headersText && values.headersText.trim()) {
         try {
           parsedHeaders = JSON.parse(values.headersText.trim());
@@ -267,14 +237,14 @@ export default function EndpointsPage() {
       const created = await endpointsService.create({
         projectId: values.projectId,
         name: values.name.trim(),
-        path: cleanPath,
         method: values.method,
+        path: cleanPath,
         interval: values.interval || 60,
         expectedStatus: values.expectedStatus || 200,
         timeout: values.timeout || 5000,
         latencyThresholdMs: values.latencyThresholdMs || 500,
-        headers: parsedHeaders,
-        body: values.body?.trim() ? values.body.trim() : undefined,
+        headers: Object.keys(parsedHeaders).length > 0 ? parsedHeaders : {},
+        body: values.body !== undefined ? values.body.trim() : undefined,
         tags: values.tags || [],
       });
 
@@ -284,15 +254,16 @@ export default function EndpointsPage() {
       message.success(`Endpoint "${created.method} ${created.path}" registered successfully!`);
     } catch (err: any) {
       if (err.errorFields) return;
-      message.error(err.response?.data?.message || err.message || 'Failed to create endpoint');
+      message.error(err.response?.data?.message || err.message || 'Failed to register endpoint');
     } finally {
       setIsSubmittingCreate(false);
     }
   };
 
-  const handleOpenEditModal = (ep: Endpoint, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleOpenEditModal = (ep: Endpoint, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setEditingEndpoint(ep);
+
     let initialHeadersText = '';
     if (ep.headers) {
       try {
@@ -364,7 +335,6 @@ export default function EndpointsPage() {
 
   const handleRunCheck = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Prevent duplicate in-flight requests
     if (checkingIds.has(id)) {
       message.info('Health check is already running for this endpoint.');
       return;
@@ -373,7 +343,7 @@ export default function EndpointsPage() {
     setCheckingIds(prev => new Set(prev).add(id));
     try {
       const res = await endpointsService.checkNow(id);
-      
+
       setEndpoints(prev => prev.map(ep => {
         if (ep.id === id) {
           return {
@@ -434,30 +404,43 @@ export default function EndpointsPage() {
     message.success('URL copied to clipboard!');
   };
 
+  // Status counts for Segmented filter
+  const totalCount = endpoints.length;
+  const healthyCount = endpoints.filter(e => e.status === 'healthy').length;
+  const degradedCount = endpoints.filter(e => e.status === 'degraded').length;
+  const unhealthyCount = endpoints.filter(e => e.status === 'down').length;
+
   // Resolve target project for URL previews
   const activeCreateProject = projects.find(p => p.id === (selectedCreateProjectId || projects[0]?.id));
   const activeEditProject = editingEndpoint ? projects.find(p => p.id === editingEndpoint.projectId) : null;
 
+  const getMethodBadgeClass = (m: string) => {
+    const lower = m.toLowerCase();
+    return `method-pill-${lower}`;
+  };
+
   const columns: ColumnsType<Endpoint> = [
     {
-      title: 'Endpoint Name & Path',
+      title: 'Endpoint & Route',
       key: 'endpoint',
-      width: 290,
+      width: 320,
       render: (_, r) => {
         const proj = projects.find(p => p.id === r.projectId);
         const fullUrl = proj ? buildFullUrl(proj.baseUrl, r.path) : r.path;
         return (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-              <HttpMethodTag method={r.method} size="sm" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Tag className={getMethodBadgeClass(r.method)} style={{ margin: 0, padding: '2px 8px', fontSize: 11, borderRadius: 6 }}>
+                {r.method}
+              </Tag>
               <Tooltip title={`Full URL: ${fullUrl} (Click to copy)`}>
                 <span
                   onClick={e => handleCopyUrl(fullUrl, e)}
                   style={{
                     fontSize: 13,
                     fontFamily: 'JetBrains Mono, monospace',
-                    color: '#0958d9',
-                    fontWeight: 600,
+                    color: '#0f172a',
+                    fontWeight: 700,
                     cursor: 'pointer',
                   }}
                 >
@@ -468,14 +451,20 @@ export default function EndpointsPage() {
                 <Button
                   type="text"
                   size="small"
-                  icon={<CopyOutlined style={{ fontSize: 11, color: '#94a3b8' }} />}
+                  icon={<CopyOutlined style={{ fontSize: 12, color: '#94a3b8' }} />}
                   onClick={e => handleCopyUrl(fullUrl, e)}
-                  style={{ width: 20, height: 20, minWidth: 20, padding: 0 }}
+                  style={{ width: 22, height: 22, minWidth: 22, padding: 0 }}
                 />
               </Tooltip>
             </div>
-            <div style={{ fontSize: 12, color: '#64748b' }}>
-              {r.name} {proj ? `• ${proj.name}` : ''}
+            <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>{r.name}</span>
+              {proj && (
+                <>
+                  <span style={{ color: '#cbd5e1' }}>•</span>
+                  <span style={{ color: '#6366f1', fontWeight: 600 }}>{proj.name}</span>
+                </>
+              )}
             </div>
           </div>
         );
@@ -484,11 +473,11 @@ export default function EndpointsPage() {
     {
       title: 'HTTP Status',
       key: 'statusCode',
-      width: 120,
+      width: 130,
       render: (_, r) => {
         const code = r.lastStatusCode;
         if (!code) {
-          return <Tag color="default">Pending</Tag>;
+          return <Tag color="default" style={{ fontWeight: 600 }}>AWAITING</Tag>;
         }
         let tagColor = 'success';
         if (code >= 500) tagColor = 'error';
@@ -497,7 +486,7 @@ export default function EndpointsPage() {
 
         return (
           <Tooltip title={`Last recorded HTTP response: ${code} (${r.status})`}>
-            <Tag color={tagColor} style={{ fontWeight: 600, fontFamily: 'monospace' }}>
+            <Tag color={tagColor} style={{ fontWeight: 700, fontFamily: 'JetBrains Mono, monospace', padding: '2px 8px' }}>
               HTTP {code}
             </Tag>
           </Tooltip>
@@ -507,7 +496,7 @@ export default function EndpointsPage() {
     {
       title: 'Health Status',
       key: 'health',
-      width: 150,
+      width: 160,
       render: (_, r) => {
         const score = r.healthScore ?? (r.status === 'healthy' ? 100 : r.status === 'degraded' ? 70 : 20);
         let color = 'success';
@@ -525,22 +514,22 @@ export default function EndpointsPage() {
         }
 
         const tooltipContent = (
-          <div style={{ padding: '2px 4px' }}>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>API Health Score: {score}/100</div>
+          <div style={{ padding: '4px 6px' }}>
+            <div style={{ fontWeight: 700, marginBottom: 4 }}>Health Score: {score}/100</div>
             {r.degradationReason && (
-              <div style={{ color: '#ffccc7', fontSize: 12 }}>
-                Reason: {r.degradationReason}
+              <div style={{ color: '#fca5a5', fontSize: 12, marginBottom: 4 }}>
+                {r.degradationReason}
               </div>
             )}
-            <div style={{ fontSize: 11, color: '#e2e8f0', marginTop: 4 }}>
-              Threshold: Latency ≤ {r.latencyThresholdMs || 500}ms, HTTP {r.expectedStatus || 200}
+            <div style={{ fontSize: 11, color: '#94a3b8' }}>
+              Threshold: ≤ {r.latencyThresholdMs || 500}ms, HTTP {r.expectedStatus || 200}
             </div>
           </div>
         );
 
         return (
           <Tooltip title={tooltipContent}>
-            <Tag color={color} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 600, cursor: 'help' }}>
+            <Tag color={color} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 700, padding: '3px 8px' }}>
               {icon} {label} ({score})
             </Tag>
           </Tooltip>
@@ -556,10 +545,10 @@ export default function EndpointsPage() {
       key: 'rt',
       width: 140,
       render: (_, r) => (
-        <span style={{ fontSize: 12, fontFamily: 'monospace' }}>
-          <span style={{ color: '#22c55e', fontWeight: 600 }}>{formatResponseTime(r.responseTimeP50)}</span>
-          <span style={{ color: '#94a3b8', margin: '0 4px' }}>/</span>
-          <span style={{ color: r.responseTimeP95 > 500 ? '#ef4444' : r.responseTimeP95 > 200 ? '#f59e0b' : '#0958d9', fontWeight: 600 }}>
+        <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>
+          <span style={{ color: '#10b981', fontWeight: 700 }}>{formatResponseTime(r.responseTimeP50)}</span>
+          <span style={{ color: '#cbd5e1', margin: '0 4px' }}>/</span>
+          <span style={{ color: r.responseTimeP95 > 500 ? '#f43f5e' : r.responseTimeP95 > 200 ? '#f59e0b' : '#4f46e5', fontWeight: 700 }}>
             {formatResponseTime(r.responseTimeP95)}
           </span>
         </span>
@@ -569,14 +558,20 @@ export default function EndpointsPage() {
       title: 'Uptime',
       dataIndex: 'uptime',
       key: 'uptime',
-      width: 130,
+      width: 140,
       render: (v: number) => {
         const val = typeof v === 'number' ? v : 100;
         return (
           <Tooltip title={`Uptime calculated from historical health checks: ${val.toFixed(2)}%`}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Progress percent={val} size="small" showInfo={false} strokeColor={val >= 99 ? '#22c55e' : val >= 95 ? '#f59e0b' : '#ef4444'} style={{ width: 55, margin: 0 }} />
-              <span style={{ fontSize: 11, fontWeight: 600 }}>{val.toFixed(1)}%</span>
+              <Progress
+                percent={val}
+                size="small"
+                showInfo={false}
+                strokeColor={val >= 99 ? '#10b981' : val >= 95 ? '#f59e0b' : '#f43f5e'}
+                style={{ width: 60, margin: 0 }}
+              />
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{val.toFixed(1)}%</span>
             </div>
           </Tooltip>
         );
@@ -589,50 +584,75 @@ export default function EndpointsPage() {
       width: 120,
       render: (v: string) => (
         <Tooltip title={v ? new Date(v).toLocaleString() : 'Never'}>
-          <span style={{ fontSize: 12, color: '#64748b' }}>{fromNow(v)}</span>
+          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{fromNow(v)}</span>
         </Tooltip>
       ),
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 180,
+      width: 200,
       render: (_, r) => {
         const isRunning = checkingIds.has(r.id);
         const hasIssue = r.status === 'down' || r.status === 'degraded' || (r.lastStatusCode && r.lastStatusCode >= 400);
+
         return (
-          <Space size={4} onClick={e => e.stopPropagation()}>
-            <Tooltip title="Run live check now">
+          <Space size={6} onClick={e => e.stopPropagation()}>
+            {/* AI Diagnosis CTA */}
+            {hasIssue ? (
               <Button
                 size="small"
-                icon={<ThunderboltOutlined style={{ color: isRunning ? '#94a3b8' : '#0958d9' }} />}
+                className="btn-ai-gradient"
+                icon={<RobotOutlined />}
+                onClick={(e) => handleOpenAiDiagnosis(r, e)}
+                style={{ fontSize: 11, padding: '0 8px', height: 28, borderRadius: 6 }}
+              >
+                AI Fix
+              </Button>
+            ) : (
+              <Tooltip title="AI Root Cause Analysis (Powered by Gemini)">
+                <Button
+                  size="small"
+                  icon={<RobotOutlined style={{ color: '#7c3aed' }} />}
+                  onClick={(e) => handleOpenAiDiagnosis(r, e)}
+                  style={{ borderRadius: 6, height: 28, width: 28 }}
+                />
+              </Tooltip>
+            )}
+
+            {/* Run health check */}
+            <Tooltip title="Execute synthetic check now">
+              <Button
+                size="small"
+                icon={<ThunderboltOutlined style={{ color: isRunning ? '#94a3b8' : '#4f46e5' }} />}
                 loading={isRunning}
                 disabled={isRunning}
                 onClick={(e) => handleRunCheck(r.id, e)}
+                style={{ borderRadius: 6, height: 28, width: 28 }}
               />
             </Tooltip>
-            <Tooltip title="AI Root Cause Analysis & Fix (Powered by Gemini)">
-              <Button
-                size="small"
-                style={hasIssue ? { borderColor: '#8b5cf6', background: '#f5f3ff' } : {}}
-                icon={<RobotOutlined style={{ color: hasIssue ? '#7c3aed' : '#8b5cf6' }} />}
-                onClick={(e) => handleOpenAiDiagnosis(r, e)}
-              />
-            </Tooltip>
-            <Tooltip title="View endpoint details">
+
+            {/* View Details */}
+            <Tooltip title="View endpoint telemetry">
               <Button
                 size="small"
                 icon={<EyeOutlined />}
                 onClick={() => navigate(`/endpoints/${r.id}`)}
+                style={{ borderRadius: 6, height: 28, width: 28 }}
               />
             </Tooltip>
+
+            {/* Edit Endpoint */}
             <Tooltip title="Edit endpoint">
               <Button
                 size="small"
                 icon={<EditOutlined />}
                 onClick={(e) => handleOpenEditModal(r, e)}
+                style={{ borderRadius: 6, height: 28, width: 28 }}
               />
             </Tooltip>
+
+            {/* Delete Endpoint */}
             <Tooltip title="Delete endpoint">
               <Popconfirm
                 title="Delete endpoint?"
@@ -641,7 +661,7 @@ export default function EndpointsPage() {
                 okButtonProps={{ danger: true }}
                 onConfirm={() => handleDelete(r.id, r.name)}
               >
-                <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                <Button size="small" type="text" danger icon={<DeleteOutlined />} style={{ borderRadius: 6, height: 28, width: 28 }} />
               </Popconfirm>
             </Tooltip>
           </Space>
@@ -653,76 +673,79 @@ export default function EndpointsPage() {
   return (
     <div>
       <PageHeader
-        title="Endpoints"
-        subtitle="Real-time API monitoring, health scoring, and latency telemetry"
+        title="Endpoints & Routes"
+        subtitle="Real-time synthetic API monitoring, latency telemetry, and AI root cause diagnosis"
         breadcrumbs={[{ label: 'Endpoints' }]}
         actions={
-          <Space wrap size={10}>
-            {autoRefreshSec > 0 ? (
-              isAutoRunning ? (
-                <Badge
-                  status="processing"
-                  color="#0284c7"
-                  text={
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                      <SyncOutlined spin /> Live Testing...
-                    </span>
-                  }
-                />
-              ) : (
-                <Badge
-                  status="processing"
-                  color="#22c55e"
-                  text={
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#16a34a' }}>
-                      Live: {countdown}s
-                    </span>
-                  }
-                />
-              )
-            ) : (
-              <Badge
-                status="default"
-                text={<span style={{ fontSize: 13, color: '#94a3b8' }}>Live: Paused</span>}
-              />
-            )}
-
-            <Select
-              size="middle"
-              value={autoRefreshSec}
-              onChange={val => {
-                setAutoRefreshSec(val);
-                setCountdown(val);
+          <Space wrap size={10} style={{ display: 'flex', alignItems: 'center' }}>
+            {/* Live Auto-Refresh Heartbeat Bar */}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '4px 12px',
+                background: '#ffffff',
+                border: '1px solid rgba(226, 232, 240, 0.8)',
+                borderRadius: 10,
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)',
               }}
-              style={{ width: 135 }}
-              options={[
-                { label: 'Auto (60s)', value: 60 },
-                { label: 'Fast (30s)', value: 30 },
-                { label: 'Rapid (15s)', value: 15 },
-                { label: 'Paused',     value: 0 },
-              ]}
-            />
+            >
+              {autoRefreshSec > 0 ? (
+                isAutoRunning ? (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <SyncOutlined spin /> Running...
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#059669', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <span className="live-dot-pulse" /> Live Pulse: {countdown}s
+                  </span>
+                )
+              ) : (
+                <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>Pulse: Paused</span>
+              )}
+
+              <Segmented
+                size="small"
+                value={autoRefreshSec}
+                onChange={val => {
+                  setAutoRefreshSec(Number(val));
+                  setCountdown(Number(val));
+                }}
+                options={[
+                  { label: '60s', value: 60 },
+                  { label: '30s', value: 30 },
+                  { label: '15s', value: 15 },
+                  { label: 'Off', value: 0 },
+                ]}
+              />
+            </div>
 
             <Button
-              icon={<ThunderboltOutlined style={{ color: '#f59e0b' }} />}
+              className="btn-gold-gradient"
+              icon={<ThunderboltOutlined />}
               onClick={handleRunAllChecks}
               loading={isCheckingAll}
             >
               Run All Checks
             </Button>
 
-            <Button icon={<ReloadOutlined />} onClick={loadData}>Refresh</Button>
+            <Button icon={<ReloadOutlined />} onClick={loadData}>
+              Refresh
+            </Button>
+
             <Button
               icon={<ImportOutlined />}
               onClick={() => setIsImportModalOpen(true)}
             >
               Import APIs
             </Button>
+
             <Button
               type="primary"
+              className="btn-primary-gradient"
               icon={<PlusOutlined />}
               onClick={handleOpenCreateModal}
-              style={{ borderRadius: 8 }}
             >
               Add Endpoint
             </Button>
@@ -730,62 +753,104 @@ export default function EndpointsPage() {
         }
       />
 
-      {/* Filter toolbar */}
-      <Card style={{ marginBottom: 20, borderRadius: 12 }} styles={{ body: { padding: '12px 16px' } }}>
-        <Space wrap size={12}>
-          <Input
-            prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
-            placeholder="Search path or name..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ width: 220, borderRadius: 8 }}
-            allowClear
-          />
-          <Select
-            value={method}
-            onChange={setMethod}
-            style={{ width: 120 }}
-            options={[
-              { label: 'All Methods', value: 'all' },
-              ...(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as HttpMethod[]).map(m => ({ label: m, value: m })),
-            ]}
-          />
-          <Select
+      {/* Spacious, Elegant Filter Bar */}
+      <Card
+        className="card-modern"
+        style={{ marginBottom: 20 }}
+        styles={{ body: { padding: '14px 20px' } }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+          {/* Segmented Status Selector */}
+          <Segmented
             value={status}
-            onChange={setStatus}
-            style={{ width: 140 }}
+            onChange={val => setStatus(String(val))}
             options={[
-              { label: 'All Statuses', value: 'all' },
-              { label: 'Healthy (90-100)', value: 'healthy' },
-              { label: 'Degraded (50-89)', value: 'degraded' },
-              { label: 'Unhealthy (0-49)', value: 'unhealthy' },
+              {
+                label: (
+                  <div style={{ padding: '2px 8px', fontWeight: 700 }}>
+                    All <Badge count={totalCount} style={{ backgroundColor: '#64748b', marginLeft: 4 }} />
+                  </div>
+                ),
+                value: 'all',
+              },
+              {
+                label: (
+                  <div style={{ padding: '2px 8px', fontWeight: 700 }}>
+                    Healthy <Badge count={healthyCount} style={{ backgroundColor: '#10b981', marginLeft: 4 }} />
+                  </div>
+                ),
+                value: 'healthy',
+              },
+              {
+                label: (
+                  <div style={{ padding: '2px 8px', fontWeight: 700 }}>
+                    Degraded <Badge count={degradedCount} style={{ backgroundColor: '#f59e0b', marginLeft: 4 }} />
+                  </div>
+                ),
+                value: 'degraded',
+              },
+              {
+                label: (
+                  <div style={{ padding: '2px 8px', fontWeight: 700 }}>
+                    Unhealthy <Badge count={unhealthyCount} style={{ backgroundColor: '#f43f5e', marginLeft: 4 }} />
+                  </div>
+                ),
+                value: 'unhealthy',
+              },
             ]}
           />
-          <Select
-            value={project}
-            onChange={setProject}
-            style={{ width: 180 }}
-            options={[
-              { label: 'All Projects', value: 'all' },
-              ...projects.map(p => ({ label: p.name, value: p.id })),
-            ]}
-          />
-        </Space>
+
+          {/* Search & Method & Project Filter Controls */}
+          <Space wrap size={10}>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
+              placeholder="Filter by route or name..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ width: 230 }}
+              allowClear
+            />
+
+            <Select
+              value={method}
+              onChange={setMethod}
+              style={{ width: 130 }}
+              options={[
+                { label: 'All Methods', value: 'all' },
+                ...(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as HttpMethod[]).map(m => ({ label: m, value: m })),
+              ]}
+            />
+
+            <Select
+              value={project}
+              onChange={setProject}
+              style={{ width: 190 }}
+              placeholder="All Projects"
+              options={[
+                { label: 'All Projects', value: 'all' },
+                ...projects.map(p => ({ label: p.name, value: p.id })),
+              ]}
+            />
+          </Space>
+        </div>
       </Card>
 
       {/* Table view */}
       {isLoading ? (
-        <div style={{ textAlign: 'center', padding: '60px 0' }}>
+        <div style={{ textAlign: 'center', padding: '80px 0' }}>
           <Spin size="large" />
-          <div style={{ marginTop: 12, color: '#64748b' }}>Loading endpoints...</div>
+          <div style={{ marginTop: 14, color: '#64748b', fontWeight: 500 }}>
+            Fetching live endpoint measurements...
+          </div>
         </div>
       ) : endpoints.length === 0 ? (
         <EmptyState
           title="No Endpoints Found"
-          description={search ? 'No endpoints match your filters.' : 'There are no endpoints monitored yet. Click below to register your first route.'}
+          description={search ? 'No endpoints match your current filter criteria.' : 'There are no active endpoints monitored yet. Register your first route or import OpenAPI specs.'}
           action={
             <Button
               type="primary"
+              className="btn-primary-gradient"
               icon={<PlusOutlined />}
               onClick={handleOpenCreateModal}
             >
@@ -794,12 +859,16 @@ export default function EndpointsPage() {
           }
         />
       ) : (
-        <Card style={{ borderRadius: 12 }} styles={{ body: { padding: 0 } }}>
+        <Card className="card-modern" styles={{ body: { padding: 0 } }}>
           <Table
             dataSource={endpoints}
             columns={columns}
             rowKey="id"
-            pagination={{ pageSize: 15, showTotal: (t) => `${t} total endpoints` }}
+            pagination={{
+              pageSize: 15,
+              showTotal: (t) => `${t} total endpoints`,
+              style: { padding: '12px 20px' },
+            }}
             scroll={{ x: 1000 }}
             onRow={record => ({
               onClick: () => navigate(`/endpoints/${record.id}`),
@@ -811,16 +880,21 @@ export default function EndpointsPage() {
 
       {/* Register Endpoint Modal */}
       <Modal
-        title="Register New Endpoint"
+        title={
+          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+            Register New Endpoint
+          </div>
+        }
         open={isCreateModalOpen}
         onOk={handleRegisterEndpoint}
         onCancel={() => { setIsCreateModalOpen(false); createForm.resetFields(); }}
         confirmLoading={isSubmittingCreate}
         okText="Register Endpoint"
         cancelText="Cancel"
+        okButtonProps={{ className: 'btn-primary-gradient' }}
         destroyOnClose
-        width={580}
-        style={{ maxWidth: '95vw' }}
+        width={600}
+        style={{ maxWidth: '95vw', top: 30 }}
       >
         <Form
           form={createForm}
@@ -829,7 +903,7 @@ export default function EndpointsPage() {
         >
           <Form.Item
             name="projectId"
-            label="Target Project"
+            label="Target Microservice Project"
             rules={[{ required: true, message: 'Please select a target project' }]}
           >
             <Select
@@ -867,7 +941,7 @@ export default function EndpointsPage() {
               ]}
               extra={
                 activeCreateProject && (
-                  <div style={{ fontSize: 12, color: '#0958d9', marginTop: 4, wordBreak: 'break-all' }}>
+                  <div style={{ fontSize: 12, color: '#4f46e5', marginTop: 4, wordBreak: 'break-all', fontWeight: 500 }}>
                     <LinkOutlined style={{ marginRight: 4 }} />
                     Full URL: <strong>{buildFullUrl(activeCreateProject.baseUrl, enteredCreatePath || '/')}</strong>
                   </div>
@@ -897,7 +971,7 @@ export default function EndpointsPage() {
               name="latencyThresholdMs"
               label={
                 <Tooltip title="Responses slower than this threshold degrade the Health Score even if HTTP 200 is returned.">
-                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: '#0958d9' }} /></span>
+                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: '#4f46e5' }} /></span>
                 </Tooltip>
               }
               style={{ flex: 1 }}
@@ -1038,16 +1112,21 @@ export default function EndpointsPage() {
 
       {/* Edit Endpoint Modal */}
       <Modal
-        title={`Edit Endpoint: ${editingEndpoint?.method} ${editingEndpoint?.path}`}
+        title={
+          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+            Edit Endpoint Configuration
+          </div>
+        }
         open={isEditModalOpen}
         onOk={handleUpdateEndpoint}
-        onCancel={() => { setIsEditModalOpen(false); setEditingEndpoint(null); }}
+        onCancel={() => { setIsEditModalOpen(false); setEditingEndpoint(null); editForm.resetFields(); }}
         confirmLoading={isSubmittingEdit}
-        okText="Save Changes"
+        okText="Update Endpoint"
         cancelText="Cancel"
+        okButtonProps={{ className: 'btn-primary-gradient' }}
         destroyOnClose
-        width={580}
-        style={{ maxWidth: '95vw' }}
+        width={600}
+        style={{ maxWidth: '95vw', top: 30 }}
       >
         <Form
           form={editForm}
@@ -1059,7 +1138,7 @@ export default function EndpointsPage() {
             label="Endpoint Friendly Name"
             rules={[{ required: true, message: 'Please enter a name' }]}
           >
-            <Input />
+            <Input placeholder="e.g. User Profile Service" />
           </Form.Item>
 
           <Space style={{ display: 'flex', width: '100%' }} align="start">
@@ -1081,14 +1160,14 @@ export default function EndpointsPage() {
               ]}
               extra={
                 activeEditProject && (
-                  <div style={{ fontSize: 12, color: '#0958d9', marginTop: 4, wordBreak: 'break-all' }}>
+                  <div style={{ fontSize: 12, color: '#4f46e5', marginTop: 4, wordBreak: 'break-all', fontWeight: 500 }}>
                     <LinkOutlined style={{ marginRight: 4 }} />
                     Full URL: <strong>{buildFullUrl(activeEditProject.baseUrl, enteredEditPath || editingEndpoint?.path || '/')}</strong>
                   </div>
                 )
               }
             >
-              <Input />
+              <Input placeholder="/api/v1/users/:id" />
             </Form.Item>
           </Space>
 
@@ -1111,7 +1190,7 @@ export default function EndpointsPage() {
               name="latencyThresholdMs"
               label={
                 <Tooltip title="Responses slower than this threshold degrade the Health Score even if HTTP 200 is returned.">
-                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: '#0958d9' }} /></span>
+                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: '#4f46e5' }} /></span>
                 </Tooltip>
               }
               style={{ flex: 1 }}
@@ -1250,25 +1329,39 @@ export default function EndpointsPage() {
         </Form>
       </Modal>
 
-      {/* ── Modal: API Import & Integration Center ─────────────────────────── */}
+      {/* Modal: API Import & Integration Center */}
       <ApiImportModal
         open={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={loadData}
       />
 
-      {/* ── Modal: Gemini AI Root Cause & Fix Diagnosis ───────────────────── */}
+      {/* Modal: Gemini AI Root Cause & Fix Diagnosis */}
       <Modal
         open={isAiModalOpen}
         onCancel={() => { setIsAiModalOpen(false); setSelectedAiEndpoint(null); setAiInsight(null); }}
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <RobotOutlined style={{ color: '#8b5cf6', fontSize: 22 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: 'linear-gradient(135deg, #7c3aed 0%, #d946ef 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                fontSize: 18,
+              }}
+            >
+              <RobotOutlined />
+            </div>
             <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
                 AI Root Cause Analysis & Fix
               </div>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
                 Powered by Google Gemini • Live Telemetry Diagnosis
               </div>
             </div>
@@ -1277,18 +1370,20 @@ export default function EndpointsPage() {
         width={720}
         style={{ maxWidth: '95vw', top: 30 }}
         footer={[
-          <Button key="close" type="primary" onClick={() => setIsAiModalOpen(false)}>
+          <Button key="close" type="primary" className="btn-primary-gradient" onClick={() => setIsAiModalOpen(false)}>
             Done
           </Button>,
         ]}
       >
         {selectedAiEndpoint && (
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 16 }}>
             {/* Header info */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, padding: '10px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '12px 16px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <HttpMethodTag method={selectedAiEndpoint.method} size="sm" />
-                <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
+                <Tag className={getMethodBadgeClass(selectedAiEndpoint.method)} style={{ margin: 0, fontWeight: 700 }}>
+                  {selectedAiEndpoint.method}
+                </Tag>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#0f172a', fontSize: 13 }}>
                   {selectedAiEndpoint.path}
                 </span>
               </div>
@@ -1297,28 +1392,28 @@ export default function EndpointsPage() {
                   {selectedAiEndpoint.status.toUpperCase()} ({selectedAiEndpoint.healthScore ?? 100}%)
                 </Tag>
                 {selectedAiEndpoint.lastStatusCode && (
-                  <Tag color={selectedAiEndpoint.lastStatusCode >= 400 ? 'red' : 'green'}>
+                  <Tag color={selectedAiEndpoint.lastStatusCode >= 400 ? 'error' : 'success'} style={{ fontWeight: 700 }}>
                     HTTP {selectedAiEndpoint.lastStatusCode}
                   </Tag>
                 )}
-                <span style={{ fontSize: 12, color: '#64748b' }}>
+                <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
                   P50: {selectedAiEndpoint.responseTimeP50 || 0}ms
                 </span>
               </div>
             </div>
 
             {isLoadingAi ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <div style={{ textAlign: 'center', padding: '48px 0' }}>
                 <Spin size="large" />
-                <div style={{ marginTop: 14, color: '#475569', fontWeight: 500 }}>
+                <div style={{ marginTop: 16, color: '#475569', fontWeight: 600, fontSize: 14 }}>
                   Gemini is analyzing endpoint telemetry, status code patterns, and latency logs...
                 </div>
               </div>
             ) : aiInsight ? (
               <div>
                 {/* Title & Description */}
-                <Card size="small" style={{ borderRadius: 8, marginBottom: 14, borderLeft: '4px solid #8b5cf6' }}>
-                  <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a', marginBottom: 6 }}>
+                <Card size="small" className="card-modern" style={{ marginBottom: 16, borderLeft: '4px solid #7c3aed' }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a', marginBottom: 6 }}>
                     {aiInsight.title}
                   </div>
                   <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
@@ -1328,20 +1423,20 @@ export default function EndpointsPage() {
 
                 {/* Likely Causes */}
                 {aiInsight.likelyCauses && aiInsight.likelyCauses.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                       Likely Causes:
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {aiInsight.likelyCauses.map((c, i) => (
-                        <div key={i} style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: 6, border: '1px solid #e2e8f0', fontSize: 12 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
-                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{c.cause}</span>
-                            <Tag color={c.confidence === 'high' ? 'red' : 'orange'} style={{ fontSize: 10, textTransform: 'uppercase' }}>
+                        <div key={i} style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <span style={{ fontWeight: 700, color: '#0f172a' }}>{c.cause}</span>
+                            <Tag color={c.confidence === 'high' ? 'error' : 'warning'} style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 700 }}>
                               {c.confidence} Confidence
                             </Tag>
                           </div>
-                          {c.evidence && <div style={{ color: '#64748b' }}>Evidence: {c.evidence}</div>}
+                          {c.evidence && <div style={{ color: '#64748b', fontSize: 12 }}>Evidence: {c.evidence}</div>}
                         </div>
                       ))}
                     </div>
@@ -1350,11 +1445,11 @@ export default function EndpointsPage() {
 
                 {/* Recommended Checks */}
                 {aiInsight.suggestedChecks && aiInsight.suggestedChecks.length > 0 && (
-                  <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                       Diagnostic Checks:
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#334155' }}>
+                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
                       {aiInsight.suggestedChecks.map((chk, i) => (
                         <li key={i} style={{ marginBottom: 4 }}>{chk}</li>
                       ))}
@@ -1365,8 +1460,8 @@ export default function EndpointsPage() {
                 {/* Suggested Fix */}
                 {aiInsight.suggestedFix && (
                   <div style={{ marginBottom: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#1e293b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                         Suggested Code / Architecture Fix:
                       </span>
                       {aiInsight.suggestedFix.codeSnippet && (
@@ -1383,19 +1478,20 @@ export default function EndpointsPage() {
                       )}
                     </div>
                     {aiInsight.suggestedFix.summary && (
-                      <div style={{ fontSize: 12, color: '#475569', marginBottom: 8, fontStyle: 'italic' }}>
+                      <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>
                         {aiInsight.suggestedFix.summary}
                       </div>
                     )}
                     {aiInsight.suggestedFix.codeSnippet && (
                       <pre style={{
-                        background: '#0f172a',
+                        background: '#090d16',
                         color: '#f8fafc',
-                        padding: 12,
-                        borderRadius: 8,
+                        padding: 14,
+                        borderRadius: 10,
                         fontSize: 12,
                         overflowX: 'auto',
                         fontFamily: 'JetBrains Mono, monospace',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
                       }}>
                         <code>{aiInsight.suggestedFix.codeSnippet}</code>
                       </pre>

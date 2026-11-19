@@ -291,28 +291,42 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
       open={open}
       onCancel={handleClose}
       title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <ImportOutlined style={{ color: '#4f8ef7', fontSize: 20 }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#ffffff',
+              fontSize: 18,
+            }}
+          >
+            <ImportOutlined />
+          </div>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>API Import & Integration Center</div>
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>API Import & Integration Center</div>
+            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
               Import routes from OpenAPI, Swagger, Postman Collections, cURL commands, or raw route lists
             </div>
           </div>
         </div>
       }
-      width={840}
+      width={860}
       style={{ maxWidth: '95vw', top: 30 }}
       footer={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             {previewResult && (
-              <span style={{ fontSize: 12, color: '#64748b' }}>
+              <span style={{ fontSize: 13, color: '#64748b' }}>
                 Selected: <strong style={{ color: '#0f172a' }}>{selectedRowKeys.length}</strong> of {previewResult.endpoints.length} endpoints
               </span>
             )}
           </div>
-          <Space>
+          <Space size={10}>
             <Button onClick={handleClose}>Cancel</Button>
             <Button
               icon={<ThunderboltOutlined />}
@@ -323,6 +337,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
             </Button>
             <Button
               type="primary"
+              className="btn-primary-gradient"
               icon={<CheckCircleOutlined />}
               onClick={handleImport}
               loading={isImporting}
@@ -336,11 +351,12 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
         </div>
       }
     >
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 16 }}>
         {/* Step 1: Destination Selection */}
         <Card
-          size="small"
-          style={{ marginBottom: 16, borderRadius: 8, background: '#f8fafc', border: '1px solid #e2e8f0' }}
+          className="card-modern"
+          style={{ marginBottom: 16 }}
+          styles={{ body: { padding: '16px 20px' } }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
             <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>

@@ -387,17 +387,10 @@ export default function AlertsPage() {
         <Space size={6}>
           <Button
             size="small"
-            style={{
-              borderColor: '#8b5cf6',
-              color: '#6d28d9',
-              background: '#f5f3ff',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}
-            icon={<RobotOutlined style={{ color: '#8b5cf6' }} />}
+            className="btn-ai-gradient"
+            icon={<RobotOutlined />}
             onClick={() => openAiFixDrawer(r)}
+            style={{ fontSize: 11, padding: '0 8px', height: 28, borderRadius: 6 }}
           >
             AI Fix
           </Button>
@@ -595,12 +588,13 @@ export default function AlertsPage() {
       <PageHeader
         title="Alerts & Incident Response"
         subtitle="Live automated incident detection, root-cause diagnosis, and step-by-step AI remediation"
+        breadcrumbs={[{ label: 'Alerts' }]}
         actions={
-          <Space>
+          <Space size={10}>
             <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
               Refresh
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+            <Button type="primary" className="btn-primary-gradient" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
               New Rule
             </Button>
           </Space>
@@ -614,11 +608,11 @@ export default function AlertsPage() {
           type="error"
           showIcon
           closable
-          style={{ marginBottom: 16 }}
+          style={{ marginBottom: 16, borderRadius: 10 }}
         />
       )}
 
-      <Card>
+      <Card className="card-modern" styles={{ body: { padding: '16px 20px' } }}>
         <Tabs defaultActiveKey="active" items={tabItems} />
       </Card>
 

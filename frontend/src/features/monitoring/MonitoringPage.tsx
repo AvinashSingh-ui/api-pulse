@@ -189,14 +189,15 @@ export default function MonitoringPage() {
   return (
     <div>
       <PageHeader
-        title="Live Monitoring"
-        subtitle={`Real-time health and telemetry · Last refreshed: ${lastRefresh.toLocaleTimeString()}`}
+        title="Live Telemetry Monitoring"
+        subtitle={`Real-time synthetic health metrics and telemetry · Last checked: ${lastRefresh.toLocaleTimeString()}`}
+        breadcrumbs={[{ label: 'Monitoring' }]}
         actions={
-          <Space>
+          <Space size={10}>
             <Button icon={<ReloadOutlined />} onClick={loadMonitoringData} loading={loading}>
               Refresh
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate('/endpoints')}>
+            <Button type="primary" className="btn-primary-gradient" icon={<PlusOutlined />} onClick={() => navigate('/endpoints')}>
               Add Endpoint
             </Button>
           </Space>
@@ -204,13 +205,13 @@ export default function MonitoringPage() {
       />
 
       {/* Stats */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={8}>
           <StatCard
             title="Avg Uptime"
             value={endpoints.length > 0 ? `${avgUptime}%` : '100%'}
             icon={<RiseOutlined />}
-            color="#22c55e"
+            color="#10b981"
             loading={loading}
             tooltip="Average across all registered endpoints"
           />
@@ -220,7 +221,7 @@ export default function MonitoringPage() {
             title="Avg Latency (P50)"
             value={endpoints.length > 0 ? `${avgResponseTime}ms` : '0ms'}
             icon={<ThunderboltOutlined />}
-            color="#4f8ef7"
+            color="#4f46e5"
             loading={loading}
           />
         </Col>
@@ -229,14 +230,14 @@ export default function MonitoringPage() {
             title="Active Degradations / Outages"
             value={activeIssues.toString()}
             icon={<WarningOutlined />}
-            color={activeIssues > 0 ? '#ef4444' : '#22c55e'}
+            color={activeIssues > 0 ? '#f43f5e' : '#10b981'}
             loading={loading}
           />
         </Col>
       </Row>
 
       {/* Charts */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={14}>
           <ResponseTimeChart
             data={rtData}
@@ -255,20 +256,21 @@ export default function MonitoringPage() {
 
       {/* Endpoint status list */}
       <Card
-        title="Endpoint Status & Telemetry"
+        className="card-modern"
+        title={<span style={{ fontWeight: 800, fontSize: 15 }}>Monitored Endpoints Telemetry</span>}
         extra={
-          <Space>
+          <Space size={12}>
             <Badge
-              color="#22c55e"
-              text={`${healthyCount} healthy`}
+              color="#10b981"
+              text={<span style={{ fontWeight: 600, fontSize: 12 }}>{healthyCount} healthy</span>}
             />
             <Badge
               color="#f59e0b"
-              text={`${degradedCount} degraded`}
+              text={<span style={{ fontWeight: 600, fontSize: 12 }}>{degradedCount} degraded</span>}
             />
             <Badge
-              color="#ef4444"
-              text={`${downCount} down`}
+              color="#f43f5e"
+              text={<span style={{ fontWeight: 600, fontSize: 12 }}>{downCount} down</span>}
             />
           </Space>
         }

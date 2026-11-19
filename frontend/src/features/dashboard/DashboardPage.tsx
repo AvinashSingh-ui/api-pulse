@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Table, Tag, Button, Empty, Space, Tabs, Badge } from 'antd';
+import { Row, Col, Card, Table, Tag, Button, Empty, Space, Tabs, Badge, Progress, Typography } from 'antd';
 import {
   FolderOutlined, ApiOutlined, RiseOutlined, ThunderboltOutlined,
   BellOutlined, BarChartOutlined, ExclamationCircleOutlined, CheckCircleOutlined,
   CloseCircleOutlined, PlusOutlined, HistoryOutlined, SafetyCertificateOutlined,
-  AlertOutlined,
+  AlertOutlined, ArrowRightOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader }              from '@/components/common/PageHeader';
@@ -21,12 +21,8 @@ import { endpointsService }        from '@/services/endpoints/endpoints';
 import { useGetNotificationsQuery } from '@/services/apiSlice';
 import type { Alert, Endpoint, MetricPoint, DashboardStats, AppNotification } from '@/types';
 
-/**
- * DashboardPage:
- * - Real-time command center for API Pulse.
- * - Guarantees data consistency: All metrics are computed strictly from active database records.
- * - Shows appropriate empty states (N/A / 0) when no active projects or endpoints exist.
- */
+const { Text } = Typography;
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -44,7 +40,7 @@ export default function DashboardPage() {
         const [statsRes, alertsRes, endpointsRes, timeseriesRes] = await Promise.all([
           monitoringService.getDashboardStats().catch(() => null),
           alertsService.list({ pageSize: 5 }).catch(() => ({ data: [] })),
-          endpointsService.list({ pageSize: 5 }).catch(() => ({ data: [] })),
+          endpointsService.list({ pageSize: 8 }).catch(() => ({ data: [] })),
           monitoringService.getOverviewTimeseries().catch(() => ({ responseTime: [], requestVolume: [] })),
         ]);
 
@@ -92,10 +88,9 @@ export default function DashboardPage() {
   const avgAvailability = stats?.avgAvailability ?? (totalEndpoints > 0 ? Number(((healthyEndpoints / totalEndpoints) * 100).toFixed(1)) : 0);
   const avgResponseTime = stats?.avgResponseTime ?? 0;
   const requestsToday = stats?.requestsToday ?? 0;
-  const errorRateToday = stats?.errorRateToday ?? 0;
 
   const { data: notificationsData } = useGetNotificationsQuery(
-    { pageSize: 5 },
+    { pageSize: 6 },
     { pollingInterval: 8000 }
   );
   const recentNotifications: AppNotification[] = notificationsData?.data || stats?.recentNotifications || [];
@@ -103,87 +98,56 @@ export default function DashboardPage() {
   // Status distribution only shows real status when endpoints exist
   const statusDistData = totalEndpoints > 0
     ? [
-        { name: 'Healthy',  value: healthyEndpoints,  color: '#22c55e' },
+        { name: 'Healthy',  value: healthyEndpoints,  color: '#10b981' },
         { name: 'Degraded', value: degradedEndpoints, color: '#f59e0b' },
-        { name: 'Down',     value: downEndpoints,     color: '#ef4444' },
+        { name: 'Down',     value: downEndpoints,     color: '#f43f5e' },
       ].filter(d => d.value > 0)
     : [];
-
-  const alertColumns = [
-    {
-      title: 'Alert',
-      dataIndex: 'title',
-      key: 'title',
-      render: (text: string, record: Alert) => (
-        <div>
-          <div style={{ fontWeight: 500, fontSize: 13, color: '#0f172a' }}>{text}</div>
-          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-            {fromNow(record.triggeredAt)}
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: 'Severity',
-      dataIndex: 'severity',
-      key: 'severity',
-      width: 100,
-      render: (s: Alert['severity']) => <SeverityBadge severity={s} />,
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 110,
-      render: (s: Alert['status']) => (
-        <Tag color={s === 'active' ? 'error' : s === 'acknowledged' ? 'warning' : 'success'}>
-          {s?.toUpperCase()}
-        </Tag>
-      ),
-    },
-  ];
 
   const notificationColumns = [
     {
       title: 'Health Incident Notification',
       key: 'title',
       render: (_: unknown, record: AppNotification) => (
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           {record.severity === 'critical' ? (
-            <CloseCircleOutlined style={{ color: '#ef4444', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
+            <CloseCircleOutlined style={{ color: '#f43f5e', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
           ) : record.severity === 'warning' ? (
             <ExclamationCircleOutlined style={{ color: '#f59e0b', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
           ) : (
-            <CheckCircleOutlined style={{ color: '#22c55e', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
+            <CheckCircleOutlined style={{ color: '#10b981', fontSize: 16, marginTop: 3, flexShrink: 0 }} />
           )}
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{record.title}</span>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{record.title}</span>
               {!record.isRead && (
-                <Tag color="processing" style={{ fontSize: 10, padding: '0 4px', lineHeight: '16px', borderRadius: 4 }}>
+                <Tag color="error" style={{ fontSize: 10, padding: '0 6px', lineHeight: '18px', borderRadius: 6, fontWeight: 700 }}>
                   NEW
                 </Tag>
               )}
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{record.message}</div>
+            <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{record.message}</div>
             {record.endpointPath && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                 {record.method && <HttpMethodTag method={record.method} size="sm" />}
-                <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#0958d9', fontWeight: 600 }}>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#4f46e5', fontWeight: 600 }}>
                   {record.endpointPath}
                 </span>
                 {record.metadata?.statusCode && (
-                  <Tag color={record.metadata.statusCode >= 500 ? 'red' : record.metadata.statusCode >= 400 ? 'orange' : 'green'} style={{ fontSize: 10, padding: '0 4px', margin: 0 }}>
+                  <Tag
+                    color={record.metadata.statusCode >= 500 ? 'error' : record.metadata.statusCode >= 400 ? 'warning' : 'success'}
+                    style={{ fontSize: 11, padding: '0 6px', margin: 0, fontWeight: 700 }}
+                  >
                     HTTP {record.metadata.statusCode}
                   </Tag>
                 )}
                 {record.metadata?.responseTime !== undefined && (
-                  <span style={{ fontSize: 11, color: '#64748b' }}>
+                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
                     {record.metadata.responseTime}ms
                   </span>
                 )}
                 {record.metadata?.failureReason && (
-                  <span style={{ fontSize: 11, color: '#dc2626' }}>
+                  <span style={{ fontSize: 12, color: '#f43f5e', fontWeight: 600 }}>
                     ({record.metadata.failureReason})
                   </span>
                 )}
@@ -197,21 +161,55 @@ export default function DashboardPage() {
       title: 'Severity',
       dataIndex: 'severity',
       key: 'severity',
-      width: 90,
+      width: 110,
       render: (s: string) => {
         const color = s === 'critical' ? 'error' : s === 'warning' ? 'warning' : 'success';
-        return <Tag color={color}>{s.toUpperCase()}</Tag>;
+        return <Tag color={color} style={{ fontWeight: 700 }}>{s.toUpperCase()}</Tag>;
       },
     },
     {
       title: 'Time',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      width: 90,
+      width: 100,
       render: (t: string) => (
-        <span style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
           {fromNow(t)}
         </span>
+      ),
+    },
+  ];
+
+  const alertColumns = [
+    {
+      title: 'Alert Rule',
+      dataIndex: 'title',
+      key: 'title',
+      render: (text: string, record: Alert) => (
+        <div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{text}</div>
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+            {fromNow(record.triggeredAt)}
+          </div>
+        </div>
+      ),
+    },
+    {
+      title: 'Severity',
+      dataIndex: 'severity',
+      key: 'severity',
+      width: 110,
+      render: (s: Alert['severity']) => <SeverityBadge severity={s} />,
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      width: 110,
+      render: (s: Alert['status']) => (
+        <Tag color={s === 'active' ? 'error' : s === 'acknowledged' ? 'warning' : 'success'} style={{ fontWeight: 700 }}>
+          {s?.toUpperCase()}
+        </Tag>
       ),
     },
   ];
@@ -221,9 +219,9 @@ export default function DashboardPage() {
       title: 'Endpoint',
       key: 'endpoint',
       render: (_: unknown, r: Endpoint) => (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <HttpMethodTag method={r.method} size="sm" />
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#475569' }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#0f172a', fontWeight: 600 }}>
             {r.path}
           </span>
         </div>
@@ -233,16 +231,16 @@ export default function DashboardPage() {
       title: 'Req/min',
       dataIndex: 'requestsPerMin',
       key: 'rpm',
-      width: 90,
-      render: (v: number) => <span style={{ fontWeight: 600 }}>{formatNumber(v || 0)}</span>,
+      width: 100,
+      render: (v: number) => <span style={{ fontWeight: 700, color: '#0f172a' }}>{formatNumber(v || 0)}</span>,
     },
     {
-      title: 'P95',
+      title: 'P95 Latency',
       dataIndex: 'responseTimeP95',
       key: 'p95',
-      width: 90,
+      width: 110,
       render: (v: number) => (
-        <span style={{ color: (v || 0) > 500 ? '#ef4444' : (v || 0) > 200 ? '#f59e0b' : '#22c55e', fontWeight: 500 }}>
+        <span style={{ color: (v || 0) > 500 ? '#f43f5e' : (v || 0) > 200 ? '#f59e0b' : '#10b981', fontWeight: 700 }}>
           {formatResponseTime(v || 0)}
         </span>
       ),
@@ -251,201 +249,254 @@ export default function DashboardPage() {
       title: 'Error %',
       dataIndex: 'errorRate',
       key: 'err',
-      width: 90,
+      width: 100,
       render: (v: number) => (
-        <span style={{ color: (v || 0) > 5 ? '#ef4444' : (v || 0) > 1 ? '#f59e0b' : '#22c55e', fontWeight: 500 }}>
+        <span style={{ color: (v || 0) > 5 ? '#f43f5e' : (v || 0) > 1 ? '#f59e0b' : '#10b981', fontWeight: 700 }}>
           {(v || 0).toFixed(1)}%
         </span>
       ),
     },
+    {
+      title: 'Status',
+      key: 'status',
+      width: 110,
+      render: (_: unknown, r: Endpoint) => {
+        const color = r.status === 'healthy' ? '#10b981' : r.status === 'degraded' ? '#f59e0b' : '#f43f5e';
+        return (
+          <Tag color={r.status === 'healthy' ? 'success' : r.status === 'degraded' ? 'warning' : 'error'} style={{ fontWeight: 700 }}>
+            {(r.status || 'HEALTHY').toUpperCase()}
+          </Tag>
+        );
+      },
+    },
   ];
+
+  const hasOutages = downEndpoints > 0;
+  const hasDegraded = degradedEndpoints > 0;
 
   return (
     <div>
       <PageHeader
-        title="Dashboard"
-        subtitle="Real-time overview of all active API projects and live telemetry"
+        title="Command Center"
+        subtitle="Real-time telemetry, live API availability scoring, and automated synthetic verification"
+        breadcrumbs={[{ label: 'Dashboard' }]}
         actions={
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button icon={<HistoryOutlined />} onClick={() => navigate('/projects?tab=history')}>
+          <Space size={10}>
+            <Button
+              icon={<HistoryOutlined />}
+              onClick={() => navigate('/projects?tab=history')}
+              style={{ borderRadius: 10 }}
+            >
               Project History
             </Button>
-            <Button icon={<PlusOutlined />} onClick={() => navigate('/projects')}>
+            <Button
+              icon={<PlusOutlined />}
+              onClick={() => navigate('/projects')}
+              style={{ borderRadius: 10 }}
+            >
               Add Project
             </Button>
-            <Button type="primary" onClick={() => navigate('/monitoring')}>
-              Live Monitor
+            <Button
+              type="primary"
+              className="btn-primary-gradient"
+              icon={<ThunderboltOutlined />}
+              onClick={() => navigate('/monitoring')}
+            >
+              Live Telemetry
             </Button>
-          </div>
+          </Space>
         }
       />
 
       {/* Meaningful empty-state card when zero active projects exist */}
       {!loading && totalProjects === 0 && (
         <Card
+          className="card-modern"
           style={{
             marginBottom: 24,
-            borderRadius: 12,
-            border: '1px solid #bae0ff',
-            background: 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%)',
+            border: '1px solid #c7d2fe',
+            background: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 100%)',
           }}
-          styles={{ body: { padding: '24px 28px' } }}
+          styles={{ body: { padding: '28px 32px' } }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
             <div>
-              <h3 style={{ margin: '0 0 6px', fontSize: 17, fontWeight: 700, color: '#0958d9' }}>
-                No active projects yet
+              <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800, color: '#3730a3' }}>
+                Welcome to API Pulse Command Center
               </h3>
               <p style={{ margin: 0, color: '#475569', fontSize: 14 }}>
-                No active projects yet. Create your first project to start monitoring API performance.
+                No active API projects configured yet. Connect your microservices or deployed endpoints to start receiving real-time observability telemetry.
               </p>
             </div>
-            <Space size={10}>
+            <Space size={12}>
               <Button
                 icon={<HistoryOutlined />}
                 onClick={() => navigate('/projects?tab=history')}
-                style={{ borderRadius: 8 }}
+                style={{ borderRadius: 10 }}
               >
                 View Project History
               </Button>
               <Button
                 type="primary"
+                className="btn-primary-gradient"
                 icon={<PlusOutlined />}
                 onClick={() => navigate('/projects')}
-                style={{ borderRadius: 8 }}
               >
-                Create Your First Project
+                Create First Project
               </Button>
             </Space>
           </div>
         </Card>
       )}
 
-      {/* Intelligent Health & Alerts Incident Status */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #ef4444' }}>
-            <div style={{ fontSize: 12, color: '#64748b' }}>Unhealthy APIs</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: downEndpoints > 0 ? '#ef4444' : '#0f172a', marginTop: 2 }}>
-              {downEndpoints}
+      {/* Executive System Health Status Banner (Replaces noisy 12 stacked cards) */}
+      <Card
+        className="card-modern"
+        style={{
+          marginBottom: 24,
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+        styles={{ body: { padding: '24px 28px' } }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
+          {/* Status summary */}
+          <div style={{ flex: 1, minWidth: 280 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span className="live-dot-pulse" style={{ backgroundColor: hasOutages ? '#f43f5e' : hasDegraded ? '#f59e0b' : '#10b981' }} />
+              <span
+                style={{
+                  fontSize: 16,
+                  fontWeight: 800,
+                  letterSpacing: '-0.01em',
+                  color: hasOutages ? '#f43f5e' : hasDegraded ? '#d97706' : '#059669',
+                }}
+              >
+                {totalEndpoints === 0
+                  ? 'Awaiting Endpoint Registration'
+                  : hasOutages
+                  ? `${downEndpoints} Service Outage Detected`
+                  : hasDegraded
+                  ? `${degradedEndpoints} Endpoints Experiencing High Latency`
+                  : 'All Systems Fully Operational'}
+              </span>
+              <Tag
+                color={hasOutages ? 'error' : hasDegraded ? 'warning' : 'success'}
+                style={{ borderRadius: 6, fontWeight: 700 }}
+              >
+                {totalEndpoints > 0 ? `${avgAvailability}% UPTIME` : 'IDLE'}
+              </Tag>
             </div>
-            <div style={{ fontSize: 11, color: downEndpoints > 0 ? '#ef4444' : '#94a3b8' }}>
-              {downEndpoints > 0 ? 'Outages / 5xx errors' : '0 outages detected'}
-            </div>
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #f59e0b' }}>
-            <div style={{ fontSize: 12, color: '#64748b' }}>Degraded APIs</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: degradedEndpoints > 0 ? '#f59e0b' : '#0f172a', marginTop: 2 }}>
-              {degradedEndpoints}
-            </div>
-            <div style={{ fontSize: 11, color: degradedEndpoints > 0 ? '#f59e0b' : '#94a3b8' }}>
-              {degradedEndpoints > 0 ? 'High latency / slow P95' : '0 degraded endpoints'}
-            </div>
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #22c55e' }}>
-            <div style={{ fontSize: 12, color: '#64748b' }}>Recovered APIs</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#22c55e', marginTop: 2 }}>
-              {recoveredEndpoints}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>
-              Auto-resolved (24h)
-            </div>
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card size="small" style={{ borderRadius: 10, borderLeft: '4px solid #6366f1' }}>
-            <div style={{ fontSize: 12, color: '#64748b' }}>Total Active Alerts</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: activeAlerts > 0 ? '#6366f1' : '#0f172a', marginTop: 2 }}>
-              {activeAlerts}
-            </div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>
-              Active rule breaches
-            </div>
-          </Card>
-        </Col>
-      </Row>
 
-      {/* Stat Cards - Strictly computed from active database records */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {[
-          {
-            title: 'API Health Score',
-            value: totalEndpoints > 0 ? `${avgHealthScore}/100` : 'N/A',
-            icon: <SafetyCertificateOutlined />,
-            color: avgHealthScore >= 90 ? '#22c55e' : avgHealthScore >= 50 ? '#f59e0b' : '#ef4444',
-            subtitle: totalEndpoints > 0
-              ? (avgHealthScore >= 90 ? 'Healthy (≥90)' : avgHealthScore >= 50 ? 'Degraded (50-89)' : 'Unhealthy (<50)')
-              : 'Awaiting routes',
-          },
-          {
-            title: 'Avg Uptime',
-            value: totalEndpoints > 0 ? `${avgUptime}%` : 'N/A',
-            icon: <RiseOutlined />,
-            color: '#22c55e',
-            subtitle: totalEndpoints > 0 ? 'Historical checks' : 'Awaiting endpoints',
-          },
-          {
-            title: 'Availability',
-            value: totalEndpoints > 0 ? `${avgAvailability}%` : 'N/A',
-            icon: <CheckCircleOutlined />,
-            color: avgAvailability >= 95 ? '#22c55e' : '#f59e0b',
-            subtitle: totalEndpoints > 0 ? `${healthyEndpoints}/${totalEndpoints} operational` : 'No routes',
-          },
-          {
-            title: 'Avg Response Time',
-            value: totalEndpoints > 0 ? `${avgResponseTime}ms` : 'N/A',
-            icon: <ThunderboltOutlined />,
-            color: '#f59e0b',
-            subtitle: totalEndpoints > 0 ? 'P50 median' : 'Awaiting traffic',
-          },
-          {
-            title: 'Total Projects',
-            value: totalProjects.toString(),
-            icon: <FolderOutlined />,
-            color: '#4f8ef7',
-            subtitle: totalProjects === 0 ? 'No active projects' : `${totalProjects} active`,
-          },
-          {
-            title: 'Total Endpoints',
-            value: totalEndpoints.toString(),
-            icon: <ApiOutlined />,
-            color: '#7c5cfc',
-            subtitle: totalEndpoints === 0 ? 'No active endpoints' : `${healthyEndpoints} healthy`,
-          },
-          {
-            title: 'Active Alerts',
-            value: totalProjects > 0 ? activeAlerts.toString() : '0',
-            icon: <BellOutlined />,
-            color: activeAlerts > 0 ? '#ef4444' : '#22c55e',
-            subtitle: activeAlerts > 0 ? 'Requires attention' : 'All systems normal',
-          },
-          {
-            title: 'Requests Logged',
-            value: totalProjects > 0 ? formatNumber(requestsToday) : '0',
-            icon: <BarChartOutlined />,
-            color: '#00d4aa',
-            subtitle: 'Active telemetry logs',
-          },
-        ].map((s, i) => (
-          <Col key={i} xs={24} sm={12} md={8} lg={6}>
-            <StatCard
-              title={s.title}
-              value={s.value}
-              icon={s.icon}
-              color={s.color}
-              subtitle={s.subtitle}
-              loading={loading}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{healthyEndpoints}</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Healthy</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{degradedEndpoints}</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Degraded</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f43f5e' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{downEndpoints}</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Outages</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#06b6d4' }} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{recoveredEndpoints}</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Auto-Resolved (24h)</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Health Score Gauge / Visual */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                Global Health Score
+              </div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+                {totalEndpoints > 0 ? `${avgHealthScore}` : '0'}<span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>/100</span>
+              </div>
+            </div>
+            <Progress
+              type="circle"
+              percent={totalEndpoints > 0 ? avgHealthScore : 0}
+              size={56}
+              strokeWidth={8}
+              strokeColor={{
+                '0%': '#4f46e5',
+                '100%': avgHealthScore >= 90 ? '#10b981' : avgHealthScore >= 50 ? '#f59e0b' : '#f43f5e',
+              }}
+              format={percent => (
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>
+                  {percent}%
+                </span>
+              )}
             />
-          </Col>
-        ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* 4 Focused Core KPI Cards (Clean, Spacious, Not Crowded) */}
+      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="Avg Availability"
+            value={totalEndpoints > 0 ? `${avgAvailability}%` : 'N/A'}
+            icon={<CheckCircleOutlined />}
+            color="#10b981"
+            subtitle={totalEndpoints > 0 ? `${healthyEndpoints} of ${totalEndpoints} routes healthy` : 'No routes registered'}
+            loading={loading}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="P50 Latency"
+            value={totalEndpoints > 0 ? `${avgResponseTime}ms` : 'N/A'}
+            icon={<ThunderboltOutlined />}
+            color="#f59e0b"
+            subtitle={totalEndpoints > 0 ? 'Global median response time' : 'Awaiting live traffic'}
+            loading={loading}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="Monitored Endpoints"
+            value={totalEndpoints.toString()}
+            icon={<ApiOutlined />}
+            color="#4f46e5"
+            subtitle={`${totalProjects} active microservice projects`}
+            loading={loading}
+          />
+        </Col>
+
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            title="Active Incidents"
+            value={(downEndpoints + degradedEndpoints + activeAlerts).toString()}
+            icon={<AlertOutlined />}
+            color={downEndpoints > 0 ? '#f43f5e' : degradedEndpoints > 0 ? '#f59e0b' : '#10b981'}
+            subtitle={
+              downEndpoints > 0
+                ? `${downEndpoints} active outages`
+                : degradedEndpoints > 0
+                ? `${degradedEndpoints} high latency warnings`
+                : 'All endpoints performing optimally'
+            }
+            loading={loading}
+          />
+        </Col>
       </Row>
 
-      {/* Charts Row 1: Response Time & Status Distribution */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      {/* Charts Row: Latency Telemetry & Status Distribution */}
+      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={16}>
           <ResponseTimeChart data={rtData} loading={loading} />
         </Col>
@@ -454,17 +505,18 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      {/* Charts Row 2: Request Volume & Recent Alerts */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+      {/* Telemetry Observability & Incident Activity Cards */}
+      <Row gutter={[20, 20]} style={{ marginBottom: 24 }}>
         <Col xs={24} lg={12}>
           <RequestVolumeChart data={rvData} loading={loading} />
         </Col>
         <Col xs={24} lg={12}>
           <Card
+            className="card-modern"
             title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <BellOutlined style={{ color: '#0958d9' }} />
-                <span>Intelligent Health Alerts & Incidents</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <BellOutlined style={{ color: '#4f46e5', fontSize: 16 }} />
+                <span style={{ fontWeight: 800, fontSize: 15 }}>Real-Time Health Incidents & Alerts</span>
               </div>
             }
             loading={loading}
@@ -472,12 +524,12 @@ export default function DashboardPage() {
               <Button
                 type="link"
                 onClick={() => navigate('/alerts')}
-                style={{ padding: 0, fontSize: 13 }}
+                style={{ padding: 0, fontSize: 13, fontWeight: 600, color: '#4f46e5' }}
               >
-                Notification Center →
+                Alerts Center <ArrowRightOutlined style={{ fontSize: 11 }} />
               </Button>
             }
-            styles={{ body: { padding: '8px 16px 16px' } }}
+            styles={{ body: { padding: '12px 20px 20px' } }}
           >
             <Tabs
               defaultActiveKey="notifications"
@@ -485,12 +537,12 @@ export default function DashboardPage() {
                 {
                   key: 'notifications',
                   label: (
-                    <span>
-                      Live Health Alerts
+                    <span style={{ fontWeight: 600 }}>
+                      Live Health Feed
                       {recentNotifications.filter(n => !n.isRead).length > 0 && (
                         <Badge
                           count={recentNotifications.filter(n => !n.isRead).length}
-                          style={{ marginLeft: 6, backgroundColor: '#ef4444' }}
+                          style={{ marginLeft: 6, backgroundColor: '#f43f5e' }}
                         />
                       )}
                     </span>
@@ -499,7 +551,7 @@ export default function DashboardPage() {
                     <Empty
                       image={Empty.PRESENTED_IMAGE_SIMPLE}
                       description="No active health alerts. All monitored endpoints are healthy."
-                      style={{ padding: '24px 0' }}
+                      style={{ padding: '32px 0' }}
                     />
                   ) : (
                     <Table
@@ -507,7 +559,7 @@ export default function DashboardPage() {
                       columns={notificationColumns}
                       rowKey="id"
                       pagination={false}
-                      size="small"
+                      size="middle"
                       scroll={{ x: 450 }}
                       onRow={(record) => ({
                         onClick: () => {
@@ -524,12 +576,12 @@ export default function DashboardPage() {
                 },
                 {
                   key: 'alerts',
-                  label: `Rule Alerts (${alerts.length})`,
+                  label: <span style={{ fontWeight: 600 }}>Rule Breaches ({alerts.length})</span>,
                   children: alerts.length === 0 ? (
                     <Empty
                       image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description="No active alerts recorded"
-                      style={{ padding: '24px 0' }}
+                      description="No active alert rule breaches recorded"
+                      style={{ padding: '32px 0' }}
                     />
                   ) : (
                     <Table
@@ -537,7 +589,7 @@ export default function DashboardPage() {
                       columns={alertColumns}
                       rowKey="id"
                       pagination={false}
-                      size="small"
+                      size="middle"
                       scroll={{ x: 450 }}
                       onRow={() => ({ onClick: () => navigate('/alerts'), style: { cursor: 'pointer' } })}
                     />
@@ -549,28 +601,39 @@ export default function DashboardPage() {
         </Col>
       </Row>
 
-      {/* Top Endpoints */}
+      {/* Top Endpoints by Traffic */}
       <Card
-        title="Top Endpoints by Traffic"
+        className="card-modern"
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ApiOutlined style={{ color: '#4f46e5', fontSize: 16 }} />
+            <span style={{ fontWeight: 800, fontSize: 15 }}>Monitored Endpoints Telemetry</span>
+          </div>
+        }
         extra={
           <Button
             type="link"
             onClick={() => navigate('/endpoints')}
-            style={{ padding: 0, fontSize: 13 }}
+            style={{ padding: 0, fontSize: 13, fontWeight: 600, color: '#4f46e5' }}
           >
-            View all
+            Manage Endpoints <ArrowRightOutlined style={{ fontSize: 11 }} />
           </Button>
         }
         loading={loading}
+        styles={{ body: { padding: '8px 20px 20px' } }}
       >
         {endpoints.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No active endpoints configured yet. Add endpoints to your projects to start tracking traffic."
-            style={{ padding: '24px 0' }}
+            description="No active endpoints configured yet. Add endpoints to start tracking live metrics."
+            style={{ padding: '32px 0' }}
           >
-            <Button type="primary" size="small" onClick={() => navigate('/endpoints')}>
-              Go to Endpoints
+            <Button
+              type="primary"
+              className="btn-primary-gradient"
+              onClick={() => navigate('/endpoints')}
+            >
+              Add Your First Endpoint
             </Button>
           </Empty>
         ) : (
@@ -579,8 +642,12 @@ export default function DashboardPage() {
             columns={endpointColumns}
             rowKey="id"
             pagination={false}
-            size="small"
-            scroll={{ x: 500 }}
+            size="middle"
+            scroll={{ x: 600 }}
+            onRow={(r) => ({
+              onClick: () => navigate(`/endpoints/${r.id}`),
+              style: { cursor: 'pointer' },
+            })}
           />
         )}
       </Card>

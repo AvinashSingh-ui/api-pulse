@@ -70,40 +70,72 @@ export const Sidebar: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         height: '100%',
-        background: '#0f172a',
+        background: '#090d16',
         overflow: 'hidden',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
       }}>
         {/* Brand / Logo */}
         <div style={{
-          height: 60,
+          height: 64,
           display: 'flex',
           alignItems: 'center',
           justifyContent: isDrawer ? 'space-between' : 'flex-start',
           padding: isCollapsedMode ? '0 16px' : '0 20px',
-          gap: 10,
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          gap: 12,
+          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
           flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            onClick={() => handleNavClick('/')}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+          >
             <div style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #4f8ef7 0%, #7c5cfc 100%)',
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 14,
               fontWeight: 800,
-              color: '#fff',
+              color: '#ffffff',
               flexShrink: 0,
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.45)',
+              position: 'relative',
             }}>
               AP
+              <span
+                className="live-dot-pulse"
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  width: 7,
+                  height: 7,
+                }}
+              />
             </div>
             {(!isCollapsedMode || isDrawer) && (
               <div>
-                <div style={{ color: '#fff', fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>API Pulse</div>
-                <div style={{ color: '#64748b', fontSize: 10, letterSpacing: '0.08em' }}>API MONITORING</div>
+                <div style={{
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 15,
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.02em',
+                }}>
+                  API Pulse
+                </div>
+                <div style={{
+                  color: '#64748b',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                }}>
+                  Telemetry SaaS
+                </div>
               </div>
             )}
           </div>
@@ -118,7 +150,7 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Nav Items */}
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '12px 0' }}>
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '16px 8px' }}>
           {navItems.map(item => {
             const isActive = selectedKey === item.key;
             const content = (
@@ -129,22 +161,26 @@ export const Sidebar: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  padding: isCollapsedMode ? '10px 0' : '10px 16px',
-                  margin: '2px 8px',
-                  borderRadius: 8,
+                  padding: isCollapsedMode ? '10px 0' : '10px 14px',
+                  marginBottom: 4,
+                  borderRadius: 10,
                   cursor: 'pointer',
-                  background: isActive ? 'rgba(79,142,247,0.15)' : 'transparent',
+                  background: isActive
+                    ? 'linear-gradient(90deg, rgba(79, 70, 229, 0.22) 0%, rgba(99, 102, 241, 0.08) 100%)'
+                    : 'transparent',
                   color: isActive ? '#ffffff' : '#94a3b8',
                   fontSize: 14,
-                  fontWeight: isActive ? 600 : 400,
-                  transition: 'all 0.15s ease',
+                  fontWeight: isActive ? 700 : 500,
+                  transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
                   justifyContent: isCollapsedMode ? 'center' : 'flex-start',
                   position: 'relative',
+                  border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                  boxShadow: isActive ? 'inset 3px 0 0 #6366f1' : 'none',
                 }}
                 onMouseEnter={e => {
                   if (!isActive) {
-                    (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.06)';
-                    (e.currentTarget as HTMLElement).style.color = '#fff';
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.05)';
+                    (e.currentTarget as HTMLElement).style.color = '#ffffff';
                   }
                 }}
                 onMouseLeave={e => {
@@ -154,18 +190,6 @@ export const Sidebar: React.FC = () => {
                   }
                 }}
               >
-                {isActive && (
-                  <div style={{
-                    position: 'absolute',
-                    left: -8,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: 3,
-                    height: 20,
-                    background: '#4f8ef7',
-                    borderRadius: '0 2px 2px 0',
-                  }} />
-                )}
                 <span style={{ fontSize: 16, display: 'flex', alignItems: 'center' }}>
                   {item.badge ? (
                     <Badge count={item.badge} size="small" offset={[4, -2]}>
@@ -173,7 +197,9 @@ export const Sidebar: React.FC = () => {
                     </Badge>
                   ) : item.icon}
                 </span>
-                {(!isCollapsedMode || isDrawer) && <span>{item.label}</span>}
+                {(!isCollapsedMode || isDrawer) && (
+                  <span style={{ letterSpacing: '-0.01em' }}>{item.label}</span>
+                )}
               </div>
             );
 
@@ -185,8 +211,8 @@ export const Sidebar: React.FC = () => {
           })}
         </div>
 
-        {/* Footer */}
-        <div style={{ padding: '8px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* Footer Settings & Collapse */}
+        <div style={{ padding: '8px', borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
           {(() => {
             const isActive = location.pathname === '/settings';
             const btn = (
@@ -196,14 +222,28 @@ export const Sidebar: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 12,
-                  padding: isCollapsedMode ? '10px 0' : '10px 16px',
-                  margin: '2px 8px',
-                  borderRadius: 8,
+                  padding: isCollapsedMode ? '10px 0' : '10px 14px',
+                  marginBottom: 4,
+                  borderRadius: 10,
                   cursor: 'pointer',
-                  background: isActive ? 'rgba(79,142,247,0.15)' : 'transparent',
-                  color: isActive ? '#fff' : '#94a3b8',
+                  background: isActive ? 'rgba(79, 70, 229, 0.22)' : 'transparent',
+                  color: isActive ? '#ffffff' : '#94a3b8',
                   fontSize: 14,
+                  fontWeight: isActive ? 700 : 500,
                   justifyContent: isCollapsedMode ? 'center' : 'flex-start',
+                  transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.05)';
+                    (e.currentTarget as HTMLElement).style.color = '#ffffff';
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    (e.currentTarget as HTMLElement).style.background = 'transparent';
+                    (e.currentTarget as HTMLElement).style.color = '#94a3b8';
+                  }
                 }}
               >
                 <SettingOutlined style={{ fontSize: 16 }} />
@@ -220,13 +260,22 @@ export const Sidebar: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
-                padding: isCollapsedMode ? '10px 0' : '10px 16px',
-                margin: '2px 8px',
-                borderRadius: 8,
+                padding: isCollapsedMode ? '10px 0' : '10px 14px',
+                borderRadius: 10,
                 cursor: 'pointer',
                 color: '#64748b',
                 fontSize: 14,
+                fontWeight: 500,
                 justifyContent: isCollapsedMode ? 'center' : 'flex-start',
+                transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.color = '#ffffff';
+                (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.04)';
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.color = '#64748b';
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
               }}
             >
               {collapsed ? <MenuUnfoldOutlined style={{ fontSize: 16 }} /> : (
@@ -250,7 +299,7 @@ export const Sidebar: React.FC = () => {
         open={mobileDrawerOpen}
         onClose={() => dispatch(setMobileDrawerOpen(false))}
         width={260}
-        styles={{ body: { padding: 0, background: '#0f172a' } }}
+        styles={{ body: { padding: 0, background: '#090d16' } }}
       >
         {renderNavContent(true)}
       </Drawer>
@@ -263,7 +312,7 @@ export const Sidebar: React.FC = () => {
       collapsedWidth={64}
       width={240}
       style={{
-        background: '#0f172a',
+        background: '#090d16',
         position: 'fixed',
         height: '100vh',
         left: 0,
@@ -271,7 +320,7 @@ export const Sidebar: React.FC = () => {
         bottom: 0,
         zIndex: 100,
         overflow: 'hidden',
-        transition: 'width 0.2s ease',
+        transition: 'width 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
       }}
     >
       {renderNavContent(false)}

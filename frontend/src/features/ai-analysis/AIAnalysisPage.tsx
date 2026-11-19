@@ -277,28 +277,26 @@ export default function AIAnalysisPage() {
   return (
     <div>
       <PageHeader
-        title="AI Analysis & Insights"
-        subtitle="Machine learning anomaly detection, predictive outage models, and automated optimization suggestions"
+        title="AI Observability & Diagnostics"
+        subtitle="Machine learning anomaly detection, predictive outage models, and automated root cause fixes powered by Gemini"
+        breadcrumbs={[{ label: 'AI Analysis' }]}
         actions={
           <Button
             type="primary"
+            className="btn-ai-gradient"
             icon={analyzing ? <SyncOutlined spin /> : <RobotOutlined />}
             onClick={handleAnalyze}
             loading={analyzing}
-            style={{
-              background: 'linear-gradient(135deg, #4f8ef7, #7c5cfc)',
-              border: 'none',
-            }}
           >
-            {analyzing ? 'Analyzing Telemetry…' : 'Run Analysis'}
+            {analyzing ? 'Analyzing Telemetry…' : 'Run AI Analysis'}
           </Button>
         }
       />
 
-      <Row gutter={[16, 16]}>
+      <Row gutter={[20, 20]}>
         {/* Insights panel */}
         <Col xs={24} lg={15}>
-          <Card style={{ borderRadius: 12 }}>
+          <Card className="card-modern">
             <Tabs
               items={[
                 {
@@ -352,32 +350,32 @@ export default function AIAnalysisPage() {
         {/* AI Chat */}
         <Col xs={24} lg={9}>
           <Card
+            className="card-modern"
             title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div
                   style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    background: 'linear-gradient(135deg, #4f8ef7, #7c5cfc)',
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #d946ef 100%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <RobotOutlined style={{ color: '#fff', fontSize: 14 }} />
+                  <RobotOutlined style={{ color: '#fff', fontSize: 16 }} />
                 </div>
-                <span>Ask AI Copilot</span>
+                <span style={{ fontWeight: 800, fontSize: 15 }}>Ask AI Copilot</span>
                 <Badge
                   status="processing"
                   text={
-                    <span style={{ fontSize: 11, color: '#22c55e' }}>Connected</span>
+                    <span style={{ fontSize: 11, color: '#10b981', fontWeight: 600 }}>Connected</span>
                   }
                 />
               </div>
             }
             style={{
-              borderRadius: 12,
               height: isTablet ? 500 : 'calc(100vh - 220px)',
               display: 'flex',
               flexDirection: 'column',
@@ -451,10 +449,11 @@ export default function AIAnalysisPage() {
               />
               <Button
                 type="primary"
+                className="btn-primary-gradient"
                 icon={<SendOutlined />}
                 onClick={handleSend}
                 loading={sending}
-                style={{ height: 'auto', borderRadius: 8 }}
+                style={{ height: 'auto', minWidth: 44 }}
               />
             </div>
           </Card>

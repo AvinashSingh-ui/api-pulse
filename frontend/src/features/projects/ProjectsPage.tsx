@@ -7,7 +7,7 @@ import {
   PlusOutlined, SearchOutlined, GlobalOutlined,
   ApiOutlined, DeleteOutlined, EyeOutlined, ReloadOutlined,
   HistoryOutlined, UndoOutlined, CopyOutlined, AppstoreOutlined,
-  ExclamationCircleOutlined, ImportOutlined,
+  ExclamationCircleOutlined, ImportOutlined, ArrowRightOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
@@ -20,9 +20,20 @@ import type { Project } from '@/types';
 
 const { Text } = Typography;
 
-const ENV_COLORS: Record<string, string> = { production: 'red', staging: 'orange', development: 'blue' };
-const STATUS_COLORS: Record<string, string> = { active: 'processing', inactive: 'default', archived: 'warning', deleted: 'error' };
-const HEALTH_COLOR = (s: number) => s >= 95 ? '#22c55e' : s >= 80 ? '#f59e0b' : '#ef4444';
+const ENV_COLORS: Record<string, string> = {
+  production: 'error',
+  staging: 'warning',
+  development: 'processing',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  active: 'processing',
+  inactive: 'default',
+  archived: 'warning',
+  deleted: 'error',
+};
+
+const HEALTH_COLOR = (s: number) => (s >= 95 ? '#10b981' : s >= 80 ? '#f59e0b' : '#f43f5e');
 
 export default function ProjectsPage() {
   const navigate = useNavigate();
@@ -145,7 +156,6 @@ export default function ProjectsPage() {
       await projectsService.delete(id);
       setActiveProjects(prev => prev.filter(p => p.id !== id));
       message.success(`Project "${name}" moved to Project History. Monitoring has been paused.`);
-      // Refresh history list in background
       loadHistoryProjects();
     } catch (err: any) {
       message.error(err.message || 'Failed to delete project');
@@ -155,10 +165,9 @@ export default function ProjectsPage() {
   // Restore Project from History
   const handleRestore = async (id: string, name: string) => {
     try {
-      const res = await projectsService.restore(id);
+      await projectsService.restore(id);
       setHistoryProjects(prev => prev.filter(p => p.id !== id));
       message.success(`Project "${name}" restored to Active Projects successfully!`);
-      // Refresh active list
       loadActiveProjects();
       setActiveTab('active');
     } catch (err: any) {
@@ -185,7 +194,7 @@ export default function ProjectsPage() {
       width: 240,
       render: (_, r) => (
         <div>
-          <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>{r.name}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{r.name}</div>
           {r.description && (
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, maxWidth: 280, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
               {r.description}
@@ -198,10 +207,10 @@ export default function ProjectsPage() {
       title: 'Deployed Link / Base URL',
       dataIndex: 'baseUrl',
       key: 'baseUrl',
-      width: 230,
+      width: 240,
       render: (url: string) => (
-        <Space size={4}>
-          <Text code style={{ fontSize: 12 }}>{url}</Text>
+        <Space size={6}>
+          <Text code style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>{url}</Text>
           <Tooltip title="Copy Deployed Link / Base URL">
             <Button
               type="text"
@@ -222,7 +231,7 @@ export default function ProjectsPage() {
       key: 'env',
       width: 120,
       render: (env: string) => (
-        <Tag color={ENV_COLORS[env] || 'default'} style={{ fontSize: 11, fontWeight: 600 }}>
+        <Tag color={ENV_COLORS[env] || 'default'} style={{ fontSize: 11, fontWeight: 700 }}>
           {env?.toUpperCase()}
         </Tag>
       ),
@@ -233,7 +242,7 @@ export default function ProjectsPage() {
       key: 'status',
       width: 110,
       render: (status: string) => (
-        <Tag color={status === 'deleted' ? 'error' : status === 'archived' ? 'warning' : 'default'} style={{ fontWeight: 600 }}>
+        <Tag color={status === 'deleted' ? 'error' : status === 'archived' ? 'warning' : 'default'} style={{ fontWeight: 700 }}>
           {status?.toUpperCase()}
         </Tag>
       ),
@@ -242,11 +251,11 @@ export default function ProjectsPage() {
       title: 'Endpoints',
       dataIndex: 'endpointCount',
       key: 'endpointCount',
-      width: 100,
+      width: 110,
       render: (count: number) => (
         <Space size={6}>
-          <ApiOutlined style={{ color: '#64748b' }} />
-          <span style={{ fontWeight: 600 }}>{count ?? 0}</span>
+          <ApiOutlined style={{ color: '#4f46e5' }} />
+          <span style={{ fontWeight: 700 }}>{count ?? 0}</span>
         </Space>
       ),
     },
@@ -264,7 +273,7 @@ export default function ProjectsPage() {
       key: 'deletedAt',
       width: 140,
       render: (_, r) => (
-        <span style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
+        <span style={{ fontSize: 12, color: '#f43f5e', fontWeight: 600 }}>
           {r.deletedAt ? fromNow(r.deletedAt) : r.updatedAt ? fromNow(r.updatedAt) : 'Recently'}
         </span>
       ),
@@ -283,7 +292,7 @@ export default function ProjectsPage() {
             cancelText="Cancel"
             onConfirm={() => handleRestore(r.id, r.name)}
           >
-            <Button size="small" type="primary" icon={<UndoOutlined />} style={{ borderRadius: 6, fontSize: 12 }}>
+            <Button size="small" type="primary" className="btn-primary-gradient" icon={<UndoOutlined />} style={{ fontSize: 12, height: 28, borderRadius: 6 }}>
               Restore
             </Button>
           </Popconfirm>
@@ -296,8 +305,8 @@ export default function ProjectsPage() {
             cancelText="Cancel"
             onConfirm={() => handlePermanentDelete(r.id, r.name)}
           >
-            <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 6, fontSize: 12 }}>
-              Delete Permanently
+            <Button size="small" danger icon={<DeleteOutlined />} style={{ fontSize: 12, height: 28, borderRadius: 6 }}>
+              Delete
             </Button>
           </Popconfirm>
         </Space>
@@ -308,11 +317,11 @@ export default function ProjectsPage() {
   return (
     <div>
       <PageHeader
-        title="Projects"
+        title="Projects & Microservices"
         subtitle="Manage microservice projects, live telemetry routes, and historical project lifecycles"
         breadcrumbs={[{ label: 'Projects' }]}
         actions={
-          <Space>
+          <Space size={10}>
             <Button
               icon={<ReloadOutlined />}
               onClick={() => {
@@ -330,9 +339,9 @@ export default function ProjectsPage() {
             </Button>
             <Button
               type="primary"
+              className="btn-primary-gradient"
               icon={<PlusOutlined />}
               onClick={() => setIsModalOpen(true)}
-              style={{ borderRadius: 8 }}
             >
               New Project
             </Button>
@@ -349,12 +358,12 @@ export default function ProjectsPage() {
           {
             key: 'active',
             label: (
-              <span style={{ fontSize: 14, fontWeight: 600 }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>
                 <AppstoreOutlined style={{ marginRight: 6 }} />
                 Active Projects{' '}
                 <Badge
                   count={activeProjects.length}
-                  style={{ backgroundColor: '#4f8ef7', marginLeft: 4 }}
+                  style={{ backgroundColor: '#4f46e5', marginLeft: 4 }}
                 />
               </span>
             ),
@@ -362,13 +371,13 @@ export default function ProjectsPage() {
           {
             key: 'history',
             label: (
-              <span style={{ fontSize: 14, fontWeight: 600 }}>
+              <span style={{ fontSize: 14, fontWeight: 700 }}>
                 <HistoryOutlined style={{ marginRight: 6 }} />
                 Project History{' '}
                 {historyProjects.length > 0 && (
                   <Badge
                     count={historyProjects.length}
-                    style={{ backgroundColor: '#94a3b8', marginLeft: 4 }}
+                    style={{ backgroundColor: '#64748b', marginLeft: 4 }}
                   />
                 )}
               </span>
@@ -381,20 +390,20 @@ export default function ProjectsPage() {
       {activeTab === 'active' && (
         <div>
           {/* Active Filter Toolbar */}
-          <Card style={{ marginBottom: 20, borderRadius: 12 }} styles={{ body: { padding: '12px 16px' } }}>
+          <Card className="card-modern" style={{ marginBottom: 20 }} styles={{ body: { padding: '14px 20px' } }}>
             <Space wrap size={12}>
               <Input
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                 placeholder="Search active projects by name or deployed link..."
                 value={activeSearch}
                 onChange={e => setActiveSearch(e.target.value)}
-                style={{ width: 300, borderRadius: 8 }}
+                style={{ width: 320 }}
                 allowClear
               />
               <Select
                 value={activeEnv}
                 onChange={setActiveEnv}
-                style={{ width: 160 }}
+                style={{ width: 170 }}
                 options={[
                   { label: 'All Environments', value: 'all' },
                   { label: 'Production',       value: 'production' },
@@ -417,18 +426,18 @@ export default function ProjectsPage() {
 
           {/* Active Projects Loading / Empty / Grid */}
           {isLoadingActive ? (
-            <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <Spin size="large" />
-              <div style={{ marginTop: 12, color: '#64748b' }}>Loading active projects...</div>
+              <div style={{ marginTop: 14, color: '#64748b', fontWeight: 500 }}>Loading active projects...</div>
             </div>
           ) : activeProjects.length === 0 ? (
             <EmptyState
               title="No Active Projects"
               description="No active projects yet. Create your first project to start monitoring API performance."
               action={
-                <Space>
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
-                    Create Your First Project
+                <Space size={10}>
+                  <Button type="primary" className="btn-primary-gradient" icon={<PlusOutlined />} onClick={() => setIsModalOpen(true)}>
+                    Create First Project
                   </Button>
                   {historyProjects.length > 0 && (
                     <Button onClick={() => setActiveTab('history')}>
@@ -439,35 +448,36 @@ export default function ProjectsPage() {
               }
             />
           ) : (
-            <Row gutter={[16, 16]}>
+            <Row gutter={[20, 20]}>
               {activeProjects.map(project => (
                 <Col xs={24} sm={12} lg={8} key={project.id}>
                   <Card
                     hoverable
+                    className="card-modern card-modern-hover"
                     style={{
                       height: '100%',
-                      borderRadius: 12,
                       display: 'flex',
                       flexDirection: 'column',
-                      transition: 'all 0.2s ease',
-                      border: '1px solid #e2e8f0',
+                      cursor: 'pointer',
                     }}
-                    styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column' } }}
+                    styles={{ body: { flex: 1, display: 'flex', flexDirection: 'column', padding: '22px 24px' } }}
                     onClick={() => navigate(`/projects/${project.id}`)}
                   >
                     {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                       <div>
-                        <span style={{ fontWeight: 700, fontSize: 16, color: '#0f172a' }}>{project.name}</span>
-                        <div style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Tag color={ENV_COLORS[project.environment]} style={{ fontSize: 11, fontWeight: 600 }}>
+                        <span style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                          {project.name}
+                        </span>
+                        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <Tag color={ENV_COLORS[project.environment]} style={{ fontSize: 11, fontWeight: 700, borderRadius: 6 }}>
                             {project.environment.toUpperCase()}
                           </Tag>
-                          <Badge status={STATUS_COLORS[project.status] as any} text={<span style={{ fontSize: 12 }}>{project.status}</span>} />
+                          <Badge status={STATUS_COLORS[project.status] as any} text={<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>{project.status}</span>} />
                         </div>
                       </div>
 
-                      <Space onClick={e => e.stopPropagation()}>
+                      <Space onClick={e => e.stopPropagation()} size={4}>
                         <Tooltip title="View Project Details">
                           <Button size="small" type="text" icon={<EyeOutlined />} onClick={() => navigate(`/projects/${project.id}`)} />
                         </Tooltip>
@@ -489,7 +499,7 @@ export default function ProjectsPage() {
                       color: '#64748b',
                       fontSize: 13,
                       flex: 1,
-                      margin: '6px 0 14px',
+                      margin: '6px 0 16px',
                       lineHeight: 1.5,
                       display: '-webkit-box',
                       WebkitLineClamp: 2,
@@ -504,33 +514,34 @@ export default function ProjectsPage() {
                       <div style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
+                        gap: 8,
                         fontSize: 12,
-                        color: '#64748b',
-                        marginBottom: 14,
+                        color: '#475569',
+                        marginBottom: 16,
                         background: '#f8fafc',
-                        padding: '6px 10px',
-                        borderRadius: 6,
+                        padding: '8px 12px',
+                        borderRadius: 8,
+                        border: '1px solid #e2e8f0',
                         cursor: 'default',
                       }}>
-                        <GlobalOutlined style={{ color: '#94a3b8', flexShrink: 0 }} />
-                        <span style={{ fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <GlobalOutlined style={{ color: '#4f46e5', flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
                           {project.baseUrl}
                         </span>
                       </div>
                     </Tooltip>
 
                     {/* Metrics Row */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <ApiOutlined style={{ color: '#4f8ef7' }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                        <ApiOutlined style={{ color: '#4f46e5' }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
                           {project.endpointCount} {project.endpointCount === 1 ? 'endpoint' : 'endpoints'}
                         </span>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 11, color: '#94a3b8' }}>Health Score: </span>
-                        <span style={{ fontWeight: 700, color: HEALTH_COLOR(project.healthScore || 100), fontSize: 13 }}>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>Health Score: </span>
+                        <span style={{ fontWeight: 800, color: HEALTH_COLOR(project.healthScore || 100), fontSize: 13 }}>
                           {project.healthScore || 100}%
                         </span>
                       </div>
@@ -541,23 +552,24 @@ export default function ProjectsPage() {
                       size="small"
                       showInfo={false}
                       strokeColor={HEALTH_COLOR(project.healthScore || 100)}
-                      style={{ marginBottom: 10 }}
+                      style={{ marginBottom: 14 }}
                     />
 
                     {/* Footer */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#94a3b8' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#94a3b8', paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
                       <span>Created {fromNow(project.createdAt)}</span>
-                      <Button
-                        type="link"
-                        size="small"
-                        style={{ padding: 0, fontSize: 12, color: '#4f8ef7' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/projects/${project.id}`);
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: '#4f46e5',
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
                         }}
                       >
-                        View Endpoints →
-                      </Button>
+                        View Endpoints <ArrowRightOutlined style={{ fontSize: 10 }} />
+                      </span>
                     </div>
                   </Card>
                 </Col>
@@ -571,20 +583,20 @@ export default function ProjectsPage() {
       {activeTab === 'history' && (
         <div>
           {/* History Filter Toolbar */}
-          <Card style={{ marginBottom: 20, borderRadius: 12 }} styles={{ body: { padding: '12px 16px' } }}>
+          <Card className="card-modern" style={{ marginBottom: 20 }} styles={{ body: { padding: '14px 20px' } }}>
             <Space wrap size={12}>
               <Input
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                 placeholder="Search history by project name or deployed link..."
                 value={historySearch}
                 onChange={e => setHistorySearch(e.target.value)}
-                style={{ width: 320, borderRadius: 8 }}
+                style={{ width: 320 }}
                 allowClear
               />
               <Select
                 value={historyEnv}
                 onChange={setHistoryEnv}
-                style={{ width: 160 }}
+                style={{ width: 170 }}
                 options={[
                   { label: 'All Environments', value: 'all' },
                   { label: 'Production',       value: 'production' },
@@ -610,28 +622,28 @@ export default function ProjectsPage() {
 
           {/* History Table */}
           {isLoadingHistory ? (
-            <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <Spin size="large" />
-              <div style={{ marginTop: 12, color: '#64748b' }}>Loading project history...</div>
+              <div style={{ marginTop: 14, color: '#64748b', fontWeight: 500 }}>Loading project history...</div>
             </div>
           ) : historyProjects.length === 0 ? (
             <EmptyState
               title="No Project History"
               description="No deleted or archived projects found. When you delete a project, it will be safely retained here where you can restore it anytime."
               action={
-                <Button type="primary" onClick={() => setActiveTab('active')}>
+                <Button type="primary" className="btn-primary-gradient" onClick={() => setActiveTab('active')}>
                   Back to Active Projects
                 </Button>
               }
             />
           ) : (
-            <Card style={{ borderRadius: 12 }} styles={{ body: { padding: 0 } }}>
+            <Card className="card-modern" styles={{ body: { padding: 0 } }}>
               <Table
                 dataSource={historyProjects}
                 columns={historyColumns}
                 rowKey="id"
                 scroll={{ x: 1000 }}
-                pagination={{ pageSize: 10, showTotal: (t) => `${t} total historical projects` }}
+                pagination={{ pageSize: 10, showTotal: (t) => `${t} total historical projects`, style: { padding: '12px 20px' } }}
               />
             </Card>
           )}
@@ -640,12 +652,16 @@ export default function ProjectsPage() {
 
       {/* ── Modal: Create New Project ─────────────────────────────────────── */}
       <Modal
-        title="Create New Project"
+        title={
+          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+            Create New Microservice Project
+          </div>
+        }
         open={isModalOpen}
         onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
         destroyOnClose
-        width={580}
-        style={{ maxWidth: '95vw' }}
+        width={600}
+        style={{ maxWidth: '95vw', top: 30 }}
         footer={[
           <Button
             key="import"
@@ -655,12 +671,12 @@ export default function ProjectsPage() {
               setIsImportModalOpen(true);
             }}
           >
-            Import from OpenAPI / Postman / cURL
+            Import from OpenAPI / Postman
           </Button>,
           <Button key="cancel" onClick={() => { setIsModalOpen(false); form.resetFields(); }}>
             Cancel
           </Button>,
-          <Button key="submit" type="primary" loading={isSubmitting} onClick={handleCreateProject}>
+          <Button key="submit" type="primary" className="btn-primary-gradient" loading={isSubmitting} onClick={handleCreateProject}>
             Create Project
           </Button>,
         ]}
@@ -668,17 +684,17 @@ export default function ProjectsPage() {
         <Alert
           type="info"
           showIcon
-          style={{ marginTop: 12, marginBottom: 16, borderRadius: 8 }}
+          style={{ marginTop: 12, marginBottom: 16, borderRadius: 10 }}
           message={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
               <span style={{ fontSize: 13, color: '#1e293b' }}>
-                Have an OpenAPI spec, Postman collection, or cURL command?
+                Have an OpenAPI spec, Swagger URL, or Postman collection?
               </span>
               <Button
                 size="small"
                 type="link"
                 icon={<ImportOutlined />}
-                style={{ padding: 0, fontWeight: 600, color: '#2563eb' }}
+                style={{ padding: 0, fontWeight: 700, color: '#4f46e5' }}
                 onClick={() => {
                   setIsModalOpen(false);
                   setIsImportModalOpen(true);

@@ -384,16 +384,16 @@ export default function EndpointDetailPage() {
           { label: endpoint.name },
         ]}
         actions={
-          <Space>
+          <Space size={10}>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(project ? `/projects/${project.id}` : '/endpoints')}>
               Back
             </Button>
             <Button
               type="primary"
+              className="btn-gold-gradient"
               icon={<ThunderboltOutlined />}
               loading={isChecking}
               onClick={handleRunCheck}
-              style={{ borderRadius: 8 }}
             >
               Run Check Now
             </Button>
@@ -402,7 +402,7 @@ export default function EndpointDetailPage() {
       />
 
       {/* Meta Bar */}
-      <Card style={{ marginBottom: 20, borderRadius: 12 }} styles={{ body: { padding: '14px 20px' } }}>
+      <Card className="card-modern" style={{ marginBottom: 20 }} styles={{ body: { padding: '16px 22px' } }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <StatusBadge status={endpoint.status} />

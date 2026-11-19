@@ -347,7 +347,7 @@ export default function ProjectDetailPage() {
         subtitle={project.description || 'Configured API project under active monitoring'}
         breadcrumbs={[{ label: 'Projects', path: '/projects' }, { label: project.name }]}
         actions={
-          <Space>
+          <Space size={10}>
             <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/projects')}>
               Back to Projects
             </Button>
@@ -359,9 +359,9 @@ export default function ProjectDetailPage() {
             </Button>
             <Button
               type="primary"
+              className="btn-primary-gradient"
               icon={<PlusOutlined />}
               onClick={() => setIsModalOpen(true)}
-              style={{ borderRadius: 8 }}
             >
               Add Endpoint
             </Button>
@@ -370,7 +370,7 @@ export default function ProjectDetailPage() {
       />
 
       {/* Project Meta Banner */}
-      <Card style={{ marginBottom: 20, borderRadius: 12 }} styles={{ body: { padding: '16px 20px' } }}>
+      <Card className="card-modern" style={{ marginBottom: 20 }} styles={{ body: { padding: '16px 22px' } }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             <Tag color={project.environment === 'production' ? 'red' : 'orange'} style={{ fontWeight: 700, fontSize: 11 }}>
@@ -432,7 +432,7 @@ export default function ProjectDetailPage() {
       </Row>
 
       {/* Detailed Tabs */}
-      <Card style={{ borderRadius: 12 }} styles={{ body: { padding: '12px 20px 24px' } }}>
+      <Card className="card-modern" styles={{ body: { padding: '14px 22px 24px' } }}>
         <Tabs
           defaultActiveKey="endpoints"
           items={[

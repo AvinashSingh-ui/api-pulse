@@ -459,13 +459,15 @@ export default function TestingPage() {
     <div>
       <PageHeader
         title="API Testing & Verification"
-        subtitle="Live HTTP Client, Postman-style Request Runner, and Automated Assertion Verification"
+        subtitle="Live HTTP Client, Postman-style Request Runner, and Automated Synthetic Assertion Verification"
+        breadcrumbs={[{ label: 'Testing' }]}
         actions={
-          <Space>
+          <Space size={10}>
             <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
               Refresh
             </Button>
             <Button
+              className="btn-gold-gradient"
               icon={<ThunderboltOutlined />}
               onClick={handleRunAll}
               loading={runningAll}
@@ -473,38 +475,44 @@ export default function TestingPage() {
             >
               Run All Tests
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleStartAdHoc}>
+            <Button
+              type="primary"
+              className="btn-primary-gradient"
+              icon={<PlusOutlined />}
+              onClick={handleStartAdHoc}
+            >
               New Request
             </Button>
           </Space>
         }
       />
 
-      <Row gutter={[16, 16]} style={{ minHeight: isTablet ? 'auto' : 'calc(100vh - 210px)' }}>
+      <Row gutter={[20, 20]} style={{ minHeight: isTablet ? 'auto' : 'calc(100vh - 210px)' }}>
         {/* Left Column: Test Case Collections & Requests */}
         <Col xs={24} lg={7} xl={6}>
           <Card
+            className="card-modern"
             title={
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 600 }}>
-                  Test Cases <Tag style={{ marginLeft: 4 }}>{testCases.length}</Tag>
+                <span style={{ fontWeight: 800, fontSize: 14 }}>
+                  Test Cases <Badge count={testCases.length} style={{ backgroundColor: '#4f46e5', marginLeft: 6 }} />
                 </span>
                 <Button size="small" type="text" icon={<PlusOutlined />} onClick={handleStartAdHoc}>
                   New
                 </Button>
               </div>
             }
-            style={{ height: '100%', borderRadius: 12 }}
-            styles={{ body: { padding: '12px 0 0 0' } }}
+            style={{ height: '100%' }}
+            styles={{ body: { padding: '14px 0 0 0' } }}
           >
-            <div style={{ padding: '0 12px 12px 12px' }}>
+            <div style={{ padding: '0 14px 14px 14px' }}>
               <Input
                 placeholder="Search tests..."
                 prefix={<SearchOutlined style={{ color: '#94a3b8' }} />}
                 allowClear
                 value={searchFilter}
                 onChange={e => setSearchFilter(e.target.value)}
-                size="small"
+                size="middle"
               />
             </div>
 
@@ -512,19 +520,20 @@ export default function TestingPage() {
             <div
               onClick={handleStartAdHoc}
               style={{
-                padding: '10px 16px',
+                padding: '12px 16px',
                 cursor: 'pointer',
-                background: selectedCaseId === null ? '#f0fdf4' : '#fafafa',
-                borderLeft: selectedCaseId === null ? '3px solid #22c55e' : '3px solid transparent',
+                background: selectedCaseId === null ? '#ecfdf5' : '#f8fafc',
+                borderLeft: selectedCaseId === null ? '4px solid #10b981' : '4px solid transparent',
                 borderBottom: '1px solid #f1f5f9',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
+                gap: 10,
+                transition: 'all 0.15s ease',
               }}
             >
-              <ThunderboltOutlined style={{ color: '#22c55e', fontSize: 16 }} />
+              <ThunderboltOutlined style={{ color: '#10b981', fontSize: 18 }} />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
                   Live API Playground
                 </div>
                 <div style={{ fontSize: 11, color: '#64748b' }}>
@@ -553,8 +562,8 @@ export default function TestingPage() {
                     style={{
                       padding: '12px 16px',
                       cursor: 'pointer',
-                      background: isSelected ? '#eff6ff' : 'transparent',
-                      borderLeft: isSelected ? '3px solid #4f8ef7' : '3px solid transparent',
+                      background: isSelected ? '#eef2ff' : 'transparent',
+                      borderLeft: isSelected ? '4px solid #4f46e5' : '4px solid transparent',
                       transition: 'all 0.15s ease',
                       borderBottom: '1px solid #f1f5f9',
                     }}
@@ -566,7 +575,7 @@ export default function TestingPage() {
                           <span
                             style={{
                               fontSize: 13,
-                              fontWeight: isSelected ? 600 : 500,
+                              fontWeight: isSelected ? 700 : 600,
                               color: '#0f172a',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
@@ -578,7 +587,7 @@ export default function TestingPage() {
                           </span>
                         </div>
                         <Space size={4}>
-                          <Tag color={statusColor(item.lastStatus)} style={{ fontSize: 10, margin: 0 }}>
+                          <Tag color={statusColor(item.lastStatus)} style={{ fontSize: 10, margin: 0, fontWeight: 700 }}>
                             {(item.lastStatus ?? 'pending').toUpperCase()}
                           </Tag>
                           <Popconfirm
@@ -604,7 +613,7 @@ export default function TestingPage() {
                           style={{
                             fontSize: 11,
                             color: '#64748b',
-                            fontFamily: 'monospace',
+                            fontFamily: 'JetBrains Mono, monospace',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -623,27 +632,27 @@ export default function TestingPage() {
 
         {/* Right Column: Live Request Builder & Response Console (Postman Style) */}
         <Col xs={24} lg={17} xl={18}>
-          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          <Space direction="vertical" size={20} style={{ width: '100%' }}>
             {/* Top Interactive Request Bar */}
-            <Card style={{ borderRadius: 12 }} styles={{ body: { padding: 16 } }}>
-              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Space>
-                  <Text strong style={{ fontSize: 15 }}>
+            <Card className="card-modern" styles={{ body: { padding: '20px 24px' } }}>
+              <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space size={8}>
+                  <Text strong style={{ fontSize: 15, color: '#0f172a' }}>
                     {selectedCaseId ? `Test Case: ${testName}` : 'Custom Request Playground'}
                   </Text>
                   {selectedCaseId ? (
-                    <Tag color="blue">Saved Test</Tag>
+                    <Tag color="processing" style={{ fontWeight: 700 }}>Saved Test</Tag>
                   ) : (
-                    <Tag color="cyan">Ad-Hoc Request</Tag>
+                    <Tag color="cyan" style={{ fontWeight: 700 }}>Ad-Hoc Request</Tag>
                   )}
                 </Space>
 
-                <Space>
+                <Space size={10}>
                   {/* Select Endpoint Helper */}
                   <Select
                     placeholder="Load Endpoint URL..."
-                    size="small"
-                    style={{ width: 220 }}
+                    size="middle"
+                    style={{ width: 230 }}
                     value={selectedEndpointId}
                     onChange={handleSelectEndpoint}
                     allowClear
@@ -662,16 +671,16 @@ export default function TestingPage() {
               </div>
 
               {/* Address bar with Method + URL + Send */}
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 10 }}>
                 <Select
                   value={method}
                   onChange={(val) => setMethod(val)}
-                  style={{ width: 110, fontWeight: 700 }}
+                  style={{ width: 120, fontWeight: 800 }}
                   size="large"
                 >
                   {HTTP_METHODS.map(m => (
                     <Select.Option key={m} value={m}>
-                      <span style={{ fontWeight: 700 }}>{m}</span>
+                      <span style={{ fontWeight: 800 }}>{m}</span>
                     </Select.Option>
                   ))}
                 </Select>
@@ -692,7 +701,8 @@ export default function TestingPage() {
                   icon={<SendOutlined />}
                   onClick={handleExecuteRequest}
                   loading={running}
-                  style={{ background: '#2563eb', borderColor: '#2563eb', fontWeight: 600, minWidth: 110 }}
+                  className="btn-primary-gradient"
+                  style={{ minWidth: 120 }}
                 >
                   Send
                 </Button>
@@ -1038,8 +1048,8 @@ export default function TestingPage() {
                   )}
                 </div>
               }
-              style={{ borderRadius: 12 }}
-              styles={{ body: { padding: '12px 16px' } }}
+              className="card-modern"
+              styles={{ body: { padding: '16px 20px' } }}
             >
               {running ? (
                 <div style={{ textAlign: 'center', padding: '64px 0' }}>
