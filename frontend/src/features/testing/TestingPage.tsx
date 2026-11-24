@@ -1243,22 +1243,57 @@ export default function TestingPage() {
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     padding: '10px 14px',
-                                    background: ar.passed ? '#f0fdf4' : '#fef2f2',
+                                    background: ar.passed
+                                      ? isDark ? 'rgba(16, 185, 129, 0.12)' : '#f0fdf4'
+                                      : isDark ? 'rgba(239, 68, 68, 0.12)' : '#fef2f2',
                                     borderRadius: 8,
-                                    border: `1px solid ${ar.passed ? '#bbf7d0' : '#fecaca'}`,
+                                    border: `1px solid ${
+                                      ar.passed
+                                        ? isDark ? 'rgba(16, 185, 129, 0.28)' : '#bbf7d0'
+                                        : isDark ? 'rgba(239, 68, 68, 0.28)' : '#fecaca'
+                                    }`,
+                                    transition: 'all 0.15s ease',
                                   }}
                                 >
-                                  <Space>
+                                  <Space size={10}>
                                     {ar.passed ? (
-                                      <CheckCircleOutlined style={{ color: '#22c55e', fontSize: 16 }} />
+                                      <CheckCircleOutlined style={{ color: isDark ? '#34d399' : '#16a34a', fontSize: 16 }} />
                                     ) : (
-                                      <CloseCircleOutlined style={{ color: '#ef4444', fontSize: 16 }} />
+                                      <CloseCircleOutlined style={{ color: isDark ? '#f87171' : '#dc2626', fontSize: 16 }} />
                                     )}
-                                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>
+                                    <span
+                                      style={{
+                                        fontWeight: 600,
+                                        fontSize: 13,
+                                        color: ar.passed
+                                          ? isDark ? '#a7f3d0' : '#166534'
+                                          : isDark ? '#fecaca' : '#991b1b',
+                                      }}
+                                    >
                                       {ar.message || (ar.passed ? 'Assertion passed' : 'Assertion failed')}
                                     </span>
                                   </Space>
-                                  <Tag color={ar.passed ? 'success' : 'error'}>
+                                  <Tag
+                                    style={{
+                                      margin: 0,
+                                      fontWeight: 700,
+                                      fontSize: 11,
+                                      letterSpacing: '0.04em',
+                                      padding: '2px 8px',
+                                      borderRadius: 6,
+                                      border: `1px solid ${
+                                        ar.passed
+                                          ? isDark ? 'rgba(16, 185, 129, 0.4)' : '#86efac'
+                                          : isDark ? 'rgba(239, 68, 68, 0.4)' : '#fca5a5'
+                                      }`,
+                                      background: ar.passed
+                                        ? isDark ? 'rgba(16, 185, 129, 0.2)' : '#dcfce7'
+                                        : isDark ? 'rgba(239, 68, 68, 0.2)' : '#fee2e2',
+                                      color: ar.passed
+                                        ? isDark ? '#34d399' : '#15803d'
+                                        : isDark ? '#f87171' : '#b91c1c',
+                                    }}
+                                  >
                                     {ar.passed ? 'PASSED' : 'FAILED'}
                                   </Tag>
                                 </div>
