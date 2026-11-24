@@ -27,7 +27,7 @@ export default function MonitoringPage() {
     setLoading(true);
     try {
       const [epRes, statsRes, tsRes] = await Promise.all([
-        endpointsService.list({ pageSize: 100 }).catch(() => ({ data: [] })),
+        endpointsService.list({ pageSize: 1000 }).catch(() => ({ data: [] })),
         monitoringService.getDashboardStats().catch(() => null),
         monitoringService.getOverviewTimeseries({ interval }).catch(() => ({ responseTime: [], requestVolume: [] })),
       ]);
@@ -181,7 +181,7 @@ export default function MonitoringPage() {
       key: 'lastChecked',
       width: 130,
       render: (v: string) => (
-        <span style={{ fontSize: 12, color: '#94a3b8' }}>{v ? fromNow(v) : 'Never'}</span>
+        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{v ? fromNow(v) : 'Never'}</span>
       ),
     },
   ];
@@ -221,7 +221,7 @@ export default function MonitoringPage() {
             title="Avg Latency (P50)"
             value={endpoints.length > 0 ? `${avgResponseTime}ms` : '0ms'}
             icon={<ThunderboltOutlined />}
-            color="#4f46e5"
+            color="#71717a"
             loading={loading}
           />
         </Col>

@@ -6,6 +6,16 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface SendOtpResponse {
+  success: boolean;
+  email: string;
+  provider: string;
+  expiresIn: number;
+  message: string;
+  previewOtp?: string;
+  previewUrl?: string;
+}
+
 export const authService = {
   register: async (credentials: RegisterCredentials): Promise<LoginResponse> => {
     const res = await api.post<LoginResponse>('/auth/register', credentials);
@@ -14,6 +24,26 @@ export const authService = {
 
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
     const res = await api.post<LoginResponse>('/auth/login', credentials);
+    return res.data;
+  },
+
+  oauthLogin: async (data: { provider: 'google' | 'microsoft'; email?: string; name?: string }): Promise<LoginResponse> => {
+    const res = await api.post<LoginResponse>('/auth/oauth', data);
+    return res.data;
+  },
+
+  sendOidcOtp: async (data: { provider: 'google' | 'microsoft' | 'email'; email: string }): Promise<SendOtpResponse> => {
+    const res = await api.post<SendOtpResponse>('/auth/oidc/send-otp', data);
+    return res.data;
+  },
+
+  verifyOidcOtp: async (data: {
+    provider: 'google' | 'microsoft' | 'email';
+    email: string;
+    otp: string;
+    name?: string;
+  }): Promise<LoginResponse> => {
+    const res = await api.post<LoginResponse>('/auth/oidc/verify-otp', data);
     return res.data;
   },
 
@@ -37,3 +67,4 @@ export const authService = {
     return res.data;
   },
 };
+ 

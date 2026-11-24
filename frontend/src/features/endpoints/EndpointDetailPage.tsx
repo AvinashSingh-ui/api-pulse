@@ -356,7 +356,7 @@ export default function EndpointDetailPage() {
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <HttpMethodTag method={endpoint.method} />
-            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 20, color: '#0f172a' }}>
+            <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 20, color: 'var(--color-text)' }}>
               {endpoint.path}
             </span>
           </div>
@@ -548,7 +548,7 @@ export default function EndpointDetailPage() {
               children: (
                 <div style={{ marginTop: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <span style={{ fontSize: 13, color: '#64748b' }}>Automated ping execution logs recorded for this endpoint</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Automated ping execution logs recorded for this endpoint</span>
                     <Button
                       icon={<ReloadOutlined />}
                       size="small"
@@ -641,7 +641,7 @@ export default function EndpointDetailPage() {
                           dataIndex: 'timestamp',
                           key: 'timestamp',
                           width: 130,
-                          render: (t: string) => <span style={{ fontSize: 12, color: '#94a3b8' }}>{fromNow(t)}</span>,
+                          render: (t: string) => <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{fromNow(t)}</span>,
                         },
                       ]}
                     />
@@ -653,13 +653,13 @@ export default function EndpointDetailPage() {
               key: 'assertions',
               label: (
                 <span>
-                  <CheckCircleOutlined /> Assertions & Rules <Badge count={assertions.length} style={{ backgroundColor: '#4f8ef7', marginLeft: 4 }} />
+                  <CheckCircleOutlined /> Assertions & Rules <Badge count={assertions.length} style={{ backgroundColor: '#71717a', marginLeft: 4 }} />
                 </span>
               ),
               children: (
                 <div style={{ marginTop: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <span style={{ fontSize: 13, color: '#64748b' }}>Define health check pass/fail criteria for this endpoint</span>
+                    <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Define health check pass/fail criteria for this endpoint</span>
                     <Button
                       type="primary"
                       icon={<PlusOutlined />}
@@ -745,7 +745,7 @@ export default function EndpointDetailPage() {
                       <Select options={[200, 201, 204, 301, 302, 400, 401, 404, 500].map(c => ({ label: `HTTP ${c}`, value: c }))} />
                     </Form.Item>
 
-                    <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+                    <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>
                       Request Payload & Custom Headers
                     </Divider>
 
@@ -864,7 +864,7 @@ export default function EndpointDetailPage() {
                       />
                     </Form.Item>
 
-                    <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+                    <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>
                       Monitoring Probing Schedule
                     </Divider>
                     <Form.Item name="interval" label="Health Check Interval">
@@ -928,17 +928,17 @@ export default function EndpointDetailPage() {
 
             <Card size="small" title="Request Overview" style={{ marginBottom: 16 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr', gap: '8px 12px', fontSize: 13 }}>
-                <span style={{ color: '#64748b' }}>Response Time:</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Response Time:</span>
                 <strong>{selectedLog.responseTime}ms</strong>
-                <span style={{ color: '#64748b' }}>Client IP:</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Client IP:</span>
                 <code>{selectedLog.ip}</code>
-                <span style={{ color: '#64748b' }}>Request Size:</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Request Size:</span>
                 <span>{selectedLog.requestSize} bytes</span>
-                <span style={{ color: '#64748b' }}>Response Size:</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Response Size:</span>
                 <span>{selectedLog.responseSize} bytes</span>
-                <span style={{ color: '#64748b' }}>Timestamp:</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>Timestamp:</span>
                 <span>{new Date(selectedLog.timestamp).toLocaleString()}</span>
-                <span style={{ color: '#64748b' }}>User Agent:</span>
+                <span style={{ color: 'var(--color-text-secondary)' }}>User Agent:</span>
                 <span style={{ wordBreak: 'break-all', fontSize: 12 }}>{selectedLog.userAgent}</span>
               </div>
             </Card>

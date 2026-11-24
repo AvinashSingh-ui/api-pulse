@@ -45,6 +45,10 @@ export interface Project {
   tags: string[];
   userId?: string;
   deletedAt?: string | null;
+  bearerToken?: string;
+  apiKey?: string;
+  apiKeyHeader?: string;
+  headers?: Record<string, string>;
 }
 
 // ── Endpoints ─────────────────────────────────────────────
@@ -65,6 +69,11 @@ export interface Endpoint {
   interval?: number;
   timeout?: number;
   expectedStatus?: number;
+  expectedStatuses?: number[];
+  contentType?: string;
+  pathParams?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  bodySchema?: any;
   headers?: Record<string, string>;
   body?: string;
   responseTimeP50: number;

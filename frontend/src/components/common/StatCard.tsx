@@ -32,18 +32,18 @@ export const StatCard: React.FC<StatCardProps> = ({
   subtitle,
   icon,
   trend,
-  color = '#4f46e5',
+  color = '#71717a',
   loading = false,
   tooltip,
   onClick,
 }) => {
   const getTrendColor = () => {
-    if (!trend) return '#94a3b8';
+    if (!trend) return 'var(--color-text-tertiary)';
     const isGood =
       trend.isPositive !== undefined
         ? trend.isPositive
         : trend.direction === 'up';
-    return isGood ? '#10b981' : '#f43f5e';
+    return isGood ? '#10b981' : '#ef4444';
   };
 
   const renderTrendIcon = () => {
@@ -63,21 +63,8 @@ export const StatCard: React.FC<StatCardProps> = ({
         position: 'relative',
         overflow: 'hidden',
       }}
-      styles={{ body: { padding: '22px 24px' } }}
+      styles={{ body: { padding: '20px 22px' } }}
     >
-      {/* Subtle top accent bar */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: `linear-gradient(90deg, ${color} 0%, transparent 100%)`,
-          opacity: 0.8,
-        }}
-      />
-
       {loading ? (
         <Skeleton active paragraph={{ rows: 2 }} />
       ) : (
@@ -87,10 +74,10 @@ export const StatCard: React.FC<StatCardProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <Text
                   style={{
-                    fontSize: 13,
-                    color: '#64748b',
+                    fontSize: 12,
+                    color: 'var(--color-text-secondary)',
                     fontWeight: 600,
-                    letterSpacing: '0.01em',
+                    letterSpacing: '0.04em',
                     textTransform: 'uppercase',
                   }}
                 >
@@ -98,16 +85,16 @@ export const StatCard: React.FC<StatCardProps> = ({
                 </Text>
                 {tooltip && (
                   <Tooltip title={tooltip}>
-                    <InfoCircleOutlined style={{ fontSize: 12, color: '#94a3b8', cursor: 'help' }} />
+                    <InfoCircleOutlined style={{ fontSize: 12, color: 'var(--color-text-tertiary)', cursor: 'help' }} />
                   </Tooltip>
                 )}
               </div>
 
               <div
                 style={{
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: 800,
-                  color: '#0f172a',
+                  color: 'var(--color-text)',
                   lineHeight: 1.15,
                   letterSpacing: '-0.02em',
                   fontFeatureSettings: '"cv02", "cv03", "cv04", "cv11"',
@@ -117,7 +104,7 @@ export const StatCard: React.FC<StatCardProps> = ({
               </div>
 
               {subtitle && (
-                <div style={{ fontSize: 12, color: '#64748b', marginTop: 6, fontWeight: 500 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 6, fontWeight: 500 }}>
                   {subtitle}
                 </div>
               )}
@@ -126,18 +113,17 @@ export const StatCard: React.FC<StatCardProps> = ({
             {icon && (
               <div
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 14,
-                  background: `${color}14`,
-                  border: `1px solid ${color}22`,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 10,
+                  background: 'var(--color-bg-tertiary)',
+                  border: '1px solid var(--color-border)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color,
-                  fontSize: 22,
+                  color: 'var(--color-text)',
+                  fontSize: 20,
                   flexShrink: 0,
-                  boxShadow: `0 2px 8px -2px ${color}20`,
                 }}
               >
                 {icon}
@@ -152,10 +138,10 @@ export const StatCard: React.FC<StatCardProps> = ({
                 alignItems: 'center',
                 gap: 5,
                 marginTop: 14,
-                padding: '3px 8px',
+                padding: '2px 8px',
                 borderRadius: 6,
-                background: `${getTrendColor()}10`,
-                border: `1px solid ${getTrendColor()}25`,
+                background: `${getTrendColor()}15`,
+                border: `1px solid ${getTrendColor()}30`,
               }}
             >
               <span style={{ color: getTrendColor(), display: 'flex', alignItems: 'center' }}>
@@ -165,7 +151,7 @@ export const StatCard: React.FC<StatCardProps> = ({
                 {Math.abs(trend.value).toFixed(1)}%
               </span>
               {trend.label && (
-                <span style={{ fontSize: 11, color: '#64748b', marginLeft: 2 }}>{trend.label}</span>
+                <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', marginLeft: 2 }}>{trend.label}</span>
               )}
             </div>
           )}

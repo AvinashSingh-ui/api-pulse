@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Input, Button, Checkbox, Alert, Tabs, Select, Modal, Space, Typography, message } from 'antd';
+import { Form, Input, Button, Checkbox, Alert, Tabs, Modal, Space, Typography, message, Select } from 'antd';
 import {
-  LockOutlined, MailOutlined, UserOutlined, SafetyOutlined,
-  DashboardOutlined, ApiOutlined, CheckCircleOutlined,
+  LockOutlined, MailOutlined, UserOutlined,
+  ApiOutlined, CheckCircleOutlined, DashboardOutlined, SafetyOutlined,
   EyeOutlined, EyeInvisibleOutlined, ArrowRightOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/app/hooks';
@@ -164,7 +165,7 @@ export default function LoginPage() {
       <div
         style={{
           flex: isTablet ? 'none' : '1 1 50%',
-          background: 'linear-gradient(145deg, #090e17 0%, #0f172a 45%, #131d36 100%)',
+          background: '#09090b',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
@@ -174,32 +175,6 @@ export default function LoginPage() {
           borderRight: isTablet ? 'none' : '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
-        {/* Subtle decorative glow elements */}
-        <div
-          style={{
-            position: 'absolute',
-            top: -100,
-            right: -100,
-            width: 380,
-            height: 380,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(79, 142, 247, 0.12) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-        <div
-          style={{
-            position: 'absolute',
-            bottom: -80,
-            left: -80,
-            width: 320,
-            height: 320,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(124, 92, 252, 0.12) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-
         {/* Brand Logo & Name */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: isMobile ? 24 : 36 }}>
           <div
@@ -207,21 +182,22 @@ export default function LoginPage() {
               width: 44,
               height: 44,
               borderRadius: 12,
-              background: 'linear-gradient(135deg, #4f8ef7 0%, #7c5cfc 100%)',
+              background: '#18181b',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: '0 6px 20px rgba(79, 142, 247, 0.35)',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.6)',
               flexShrink: 0,
             }}
           >
-            <ApiOutlined style={{ fontSize: 22, color: '#ffffff' }} />
+            <ApiOutlined style={{ fontSize: 22, color: '#f4f4f5' }} />
           </div>
           <div>
-            <div style={{ color: '#ffffff', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em' }}>
+            <div style={{ color: '#f4f4f5', fontWeight: 800, fontSize: 22, letterSpacing: '-0.02em' }}>
               API Pulse
             </div>
-            <div style={{ color: '#64748b', fontSize: 11, fontWeight: 600, letterSpacing: '0.12em' }}>
+            <div style={{ color: '#71717a', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em' }}>
               INTELLIGENT OBSERVABILITY
             </div>
           </div>
@@ -230,7 +206,7 @@ export default function LoginPage() {
         {/* Main Brand Heading */}
         <h1
           style={{
-            color: '#ffffff',
+            color: '#f4f4f5',
             fontSize: isMobile ? 26 : 34,
             fontWeight: 800,
             lineHeight: 1.25,
@@ -240,13 +216,7 @@ export default function LoginPage() {
           }}
         >
           Take Control of Your{' '}
-          <span
-            style={{
-              background: 'linear-gradient(135deg, #4f8ef7 0%, #00d4aa 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
+          <span style={{ color: '#ffffff', textDecoration: 'underline', textDecorationColor: 'rgba(255, 255, 255, 0.3)' }}>
             API Performance
           </span>
         </h1>
@@ -318,16 +288,16 @@ export default function LoginPage() {
           justifyContent: 'center',
           alignItems: 'center',
           padding: isMobile ? '32px 20px' : isTablet ? '48px 36px' : '64px 48px',
-          background: '#ffffff',
+          background: 'var(--color-bg-secondary)',
         }}
       >
         <div style={{ width: '100%', maxWidth: 460 }}>
           {/* Form Header */}
           <div style={{ marginBottom: 20 }}>
-            <h2 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>
+            <h2 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: 'var(--color-text)', marginBottom: 6 }}>
               {activeTab === 'login' ? 'Welcome Back' : 'Create an Account'}
             </h2>
-            <p style={{ color: '#64748b', fontSize: 14, margin: 0 }}>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, margin: 0 }}>
               {activeTab === 'login'
                 ? 'Sign in to access your API monitoring dashboard.'
                 : 'Sign up to begin monitoring your API endpoints and services.'}
@@ -400,7 +370,7 @@ export default function LoginPage() {
               {/* Email Address */}
               <Form.Item
                 name="email"
-                label={<span style={{ fontWeight: 600, color: '#334155' }}>Email Address</span>}
+                label={<span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Email Address</span>}
                 rules={[createZodRule(emailSchema)]}
                 style={{ marginBottom: 18 }}
               >
@@ -418,7 +388,7 @@ export default function LoginPage() {
               {/* Password */}
               <Form.Item
                 name="password"
-                label={<span style={{ fontWeight: 600, color: '#334155' }}>Password</span>}
+                label={<span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Password</span>}
                 rules={[createZodRule(loginPasswordSchema)]}
                 style={{ marginBottom: 16 }}
               >
@@ -443,12 +413,12 @@ export default function LoginPage() {
                 }}
               >
                 <Form.Item name="remember" valuePropName="checked" noStyle>
-                  <Checkbox style={{ fontSize: 13, color: '#475569' }}>Remember me</Checkbox>
+                  <Checkbox style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Remember me</Checkbox>
                 </Form.Item>
                 <Button
                   type="link"
                   onClick={() => setIsForgotModalOpen(true)}
-                  style={{ padding: 0, fontSize: 13, color: '#4f8ef7', fontWeight: 500 }}
+                  style={{ padding: 0, fontSize: 13, color: 'var(--color-text)', fontWeight: 500 }}
                 >
                   Forgot password?
                 </Button>
@@ -458,6 +428,7 @@ export default function LoginPage() {
               <Form.Item style={{ marginBottom: 16 }}>
                 <Button
                   type="primary"
+                  className="btn-primary-gradient"
                   htmlType="submit"
                   loading={isLoading}
                   disabled={isLoading}
@@ -467,7 +438,6 @@ export default function LoginPage() {
                     borderRadius: 8,
                     fontSize: 15,
                     fontWeight: 600,
-                    boxShadow: '0 4px 12px rgba(79, 142, 247, 0.25)',
                   }}
                 >
                   Sign In
@@ -476,11 +446,11 @@ export default function LoginPage() {
 
               {/* Registration Link */}
               <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <span style={{ fontSize: 13, color: '#64748b' }}>Don't have an account? </span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Don't have an account? </span>
                 <Button
                   type="link"
                   onClick={() => switchTab('register')}
-                  style={{ padding: 0, fontSize: 13, fontWeight: 600, color: '#4f8ef7' }}
+                  style={{ padding: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}
                 >
                   Sign up
                 </Button>
@@ -501,7 +471,7 @@ export default function LoginPage() {
               {/* Full Name */}
               <Form.Item
                 name="name"
-                label={<span style={{ fontWeight: 600, color: '#334155' }}>Full Name</span>}
+                label={<span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Full Name</span>}
                 rules={[createZodRule(registerNameSchema)]}
                 style={{ marginBottom: 18 }}
               >
@@ -516,7 +486,7 @@ export default function LoginPage() {
               {/* Work Email */}
               <Form.Item
                 name="email"
-                label={<span style={{ fontWeight: 600, color: '#334155' }}>Email Address</span>}
+                label={<span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Email Address</span>}
                 rules={[createZodRule(emailSchema)]}
                 style={{ marginBottom: 18 }}
               >
@@ -531,7 +501,7 @@ export default function LoginPage() {
               {/* Create Password */}
               <Form.Item
                 name="password"
-                label={<span style={{ fontWeight: 600, color: '#334155' }}>Password</span>}
+                label={<span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Password</span>}
                 rules={[createZodRule(registerPasswordSchema)]}
                 style={{ marginBottom: 6 }}
               >
@@ -552,7 +522,7 @@ export default function LoginPage() {
               {/* Confirm Password */}
               <Form.Item
                 name="confirmPassword"
-                label={<span style={{ fontWeight: 600, color: '#334155' }}>Confirm Password</span>}
+                label={<span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Confirm Password</span>}
                 dependencies={['password']}
                 rules={[
                   {
@@ -580,11 +550,12 @@ export default function LoginPage() {
                 />
               </Form.Item>
 
-              {/* Team Role */}
+              {/* Assigned Team Role */}
               <Form.Item
                 name="role"
-                label={<span style={{ fontWeight: 600, color: '#334155' }}>Assigned Team Role</span>}
-                style={{ marginBottom: 22 }}
+                label={<span style={{ fontWeight: 600, color: 'var(--color-text-secondary)' }}>Assigned Team Role</span>}
+                initialValue="developer"
+                style={{ marginBottom: 18 }}
               >
                 <Select
                   options={[
@@ -600,6 +571,7 @@ export default function LoginPage() {
               <Form.Item style={{ marginBottom: 16 }}>
                 <Button
                   type="primary"
+                  className="btn-primary-gradient"
                   htmlType="submit"
                   loading={isLoading}
                   disabled={isLoading}
@@ -609,9 +581,6 @@ export default function LoginPage() {
                     borderRadius: 8,
                     fontSize: 15,
                     fontWeight: 600,
-                    background: '#22c55e',
-                    borderColor: '#22c55e',
-                    boxShadow: '0 4px 12px rgba(34, 197, 94, 0.25)',
                   }}
                 >
                   Create Account
@@ -620,11 +589,11 @@ export default function LoginPage() {
 
               {/* Sign In Link */}
               <div style={{ textAlign: 'center', marginTop: 16 }}>
-                <span style={{ fontSize: 13, color: '#64748b' }}>Already have an account? </span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>Already have an account? </span>
                 <Button
                   type="link"
                   onClick={() => switchTab('login')}
-                  style={{ padding: 0, fontSize: 13, fontWeight: 600, color: '#4f8ef7' }}
+                  style={{ padding: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}
                 >
                   Sign in directly
                 </Button>
@@ -632,25 +601,35 @@ export default function LoginPage() {
             </Form>
           )}
 
-          {/* Security Assurance Badge */}
+          {/* Modern Trust & Security Footer */}
           <div
             style={{
               marginTop: 28,
-              padding: '10px 14px',
-              borderRadius: 8,
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              fontSize: 12,
-              color: '#64748b',
-              textAlign: 'center',
+              paddingTop: 18,
+              borderTop: '1px solid var(--color-border)',
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
+              gap: 6,
+              textAlign: 'center',
             }}
           >
-            <SafetyOutlined style={{ color: '#4f8ef7', fontSize: 14 }} />
-            <span>Enterprise-grade security with 256-bit encryption & token authentication</span>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 12,
+                color: 'var(--color-text-secondary)',
+                fontWeight: 500,
+              }}
+            >
+              <SafetyCertificateOutlined style={{ color: '#10b981', fontSize: 13 }} />
+              <span>256-bit TLS Encryption · Token-based JWT · SOC 2 Compliant</span>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)' }}>
+              © {new Date().getFullYear()} API Pulse · Intelligent API Observability Platform
+            </div>
           </div>
         </div>
       </div>
@@ -671,27 +650,27 @@ export default function LoginPage() {
         destroyOnClose
         style={{ maxWidth: '90vw' }}
       >
-        <div style={{ padding: '12px 0', fontSize: 14, color: '#475569', lineHeight: 1.6 }}>
-          <Paragraph>
+        <div style={{ padding: '12px 0', fontSize: 14, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
+          <Paragraph style={{ color: 'var(--color-text-secondary)' }}>
             Self-service automated password reset is not enabled for this workspace environment.
           </Paragraph>
-          <Paragraph>
+          <Paragraph style={{ color: 'var(--color-text-secondary)' }}>
             For security compliance and access control, credentials must be re-issued by your
             organization administrator or by reaching out to your API Pulse system administrator.
           </Paragraph>
           <div
             style={{
-              background: '#f8fafc',
+              background: 'var(--color-bg-tertiary)',
               padding: '12px 16px',
               borderRadius: 8,
-              border: '1px solid #e2e8f0',
+              border: '1px solid var(--color-border)',
               marginTop: 12,
             }}
           >
-            <Text strong style={{ color: '#334155' }}>
+            <Text strong style={{ color: 'var(--color-text)' }}>
               Support Contact:
             </Text>
-            <div style={{ color: '#4f8ef7', marginTop: 4, fontFamily: 'monospace' }}>
+            <div style={{ color: 'var(--color-primary)', marginTop: 4, fontFamily: 'monospace', fontWeight: 600 }}>
               admin@apipulse.io
             </div>
           </div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Modal, Tabs, Form, Input, Button, Table, Tag, Space, Alert,
-  Select, Upload, Card, Typography, Tooltip, message, Spin, Checkbox,
+  Select, Upload, Card, Typography, Tooltip, message, Spin, Checkbox, Segmented,
 } from 'antd';
 import {
   ImportOutlined, CloudUploadOutlined, CodeOutlined,
@@ -13,6 +13,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { openapiService, ParsedEndpointPreview, ImportPreviewResult } from '@/services/endpoints/openapi';
 import { projectsService } from '@/services/endpoints/projects';
 import type { Project, HttpMethod } from '@/types';
+import { HttpMethodTag } from './HttpMethodTag';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -53,6 +54,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
   const [newProjectBaseUrl, setNewProjectBaseUrl] = useState('');
   const [newProjectEnv, setNewProjectEnv] = useState<'production' | 'staging' | 'development'>('production');
   const [newProjectDesc, setNewProjectDesc] = useState('');
+  const [newProjectBearerToken, setNewProjectBearerToken] = useState('');
 
   // Tab inputs
   const [openapiUrl, setOpenapiUrl] = useState('');
@@ -206,6 +208,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
           environment: newProjectEnv,
           description: newProjectDesc.trim() || `Imported via ${previewResult.format.toUpperCase()} (${selectedEndpoints.length} endpoints)`,
           tags: [previewResult.format, 'imported'],
+          bearerToken: newProjectBearerToken.trim() || undefined,
         } : undefined,
       });
 
@@ -246,19 +249,15 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
       title: 'Method',
       dataIndex: 'method',
       key: 'method',
-      width: 100,
-      render: (m: HttpMethod) => (
-        <Tag color={METHOD_COLORS[m] || 'default'} style={{ fontWeight: 700, minWidth: 54, textAlign: 'center' }}>
-          {m}
-        </Tag>
-      ),
+      width: 90,
+      render: (m: HttpMethod) => <HttpMethodTag method={m} size="sm" />,
     },
     {
       title: 'Endpoint Path',
       dataIndex: 'path',
       key: 'path',
       render: (path: string) => (
-        <Text code style={{ fontSize: 13, color: '#0f172a', fontWeight: 600 }}>
+        <Text code style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>
           {path}
         </Text>
       ),
@@ -268,7 +267,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
       dataIndex: 'summary',
       key: 'summary',
       render: (s: string) => (
-        <span style={{ fontSize: 12, color: '#475569' }}>
+        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
           {s || 'No summary'}
         </span>
       ),
@@ -279,7 +278,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
       key: 'action',
       width: 100,
       render: (action: string) => (
-        <Tag color={action === 'create' ? 'success' : 'processing'}>
+        <Tag color={action === 'create' ? 'success' : 'default'} style={{ fontWeight: 600 }}>
           {action === 'create' ? 'NEW' : 'UPDATE'}
         </Tag>
       ),
@@ -292,24 +291,14 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
       onCancel={handleClose}
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              fontSize: 18,
-            }}
-          >
+          <div className="modal-icon-badge">
             <ImportOutlined />
           </div>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>API Import & Integration Center</div>
-            <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
+              API Import & Integration Center
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 400, marginTop: 1 }}>
               Import routes from OpenAPI, Swagger, Postman Collections, cURL commands, or raw route lists
             </div>
           </div>
@@ -321,8 +310,8 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             {previewResult && (
-              <span style={{ fontSize: 13, color: '#64748b' }}>
-                Selected: <strong style={{ color: '#0f172a' }}>{selectedRowKeys.length}</strong> of {previewResult.endpoints.length} endpoints
+              <span style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+                Selected: <strong style={{ color: 'var(--color-text)' }}>{selectedRowKeys.length}</strong> of {previewResult.endpoints.length} endpoints
               </span>
             )}
           </div>
@@ -351,43 +340,52 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
         </div>
       }
     >
-      <div style={{ marginTop: 16 }}>
-        {/* Step 1: Destination Selection */}
-        <Card
-          className="card-modern"
-          style={{ marginBottom: 16 }}
-          styles={{ body: { padding: '16px 20px' } }}
+      <div style={{ marginTop: 14 }}>
+        {/* Step 1: Destination Selection (Clean Monochromatic Segmented Control) */}
+        <div
+          style={{
+            padding: '16px 18px',
+            borderRadius: 12,
+            background: 'var(--color-bg-tertiary)',
+            border: '1px solid var(--color-border)',
+            marginBottom: 16,
+          }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>
-              Import Destination:
-            </span>
-            <Space>
-              <Button
-                size="small"
-                type={targetType === 'new' ? 'primary' : 'default'}
-                icon={<PlusOutlined />}
-                onClick={() => setTargetType('new')}
-              >
-                Create New Project from Import
-              </Button>
-              <Button
-                size="small"
-                type={targetType === 'existing' ? 'primary' : 'default'}
-                icon={<ApiOutlined />}
-                disabled={projects.length === 0}
-                onClick={() => setTargetType('existing')}
-              >
-                Add to Existing Project
-              </Button>
-            </Space>
+          <div style={{ marginBottom: 12 }}>
+            <Segmented<'new' | 'existing'>
+              value={targetType}
+              onChange={(val) => setTargetType(val)}
+              block
+              size="middle"
+              options={[
+                {
+                  label: (
+                    <Space size={6} style={{ padding: '2px 0' }}>
+                      <PlusOutlined />
+                      <span style={{ fontWeight: 600 }}>Create New Project from Import</span>
+                    </Space>
+                  ),
+                  value: 'new',
+                },
+                {
+                  label: (
+                    <Space size={6} style={{ padding: '2px 0' }}>
+                      <ApiOutlined />
+                      <span style={{ fontWeight: 600 }}>Add to Existing Project</span>
+                    </Space>
+                  ),
+                  value: 'existing',
+                  disabled: projects.length === 0,
+                },
+              ]}
+            />
           </div>
 
           {targetType === 'new' ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginTop: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginTop: 12 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  * Project Name
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 5, color: 'var(--color-text-secondary)' }}>
+                  Project Name <span style={{ color: 'var(--color-error)' }}>*</span>
                 </label>
                 <Input
                   placeholder="e.g. Orders Microservice"
@@ -397,21 +395,21 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
               </div>
 
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                  * Application Deployed Link / Base Server URL
-                  <Tooltip title="Your live production or staging URL (e.g. Vercel, Render, AWS, custom domain) or local server URL (e.g. http://localhost:8000)">
-                    <InfoCircleOutlined style={{ marginLeft: 6, color: '#94a3b8' }} />
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, color: 'var(--color-text-secondary)' }}>
+                  <span>Base Server URL <span style={{ color: 'var(--color-error)' }}>*</span></span>
+                  <Tooltip title="Your server base URL (e.g. https://api.example.com or http://localhost:8000)">
+                    <InfoCircleOutlined style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }} />
                   </Tooltip>
                 </label>
                 <Input
-                  placeholder="https://my-deployed-app.vercel.app, https://api.example.com, or http://localhost:8000"
+                  placeholder="https://api.example.com"
                   value={newProjectBaseUrl}
                   onChange={e => setNewProjectBaseUrl(e.target.value)}
                 />
               </div>
 
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 5, color: 'var(--color-text-secondary)' }}>
                   Environment
                 </label>
                 <Select
@@ -425,16 +423,32 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                   ]}
                 />
               </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, color: 'var(--color-text-secondary)' }}>
+                  <span>Auth Token / Bearer Key (Optional)</span>
+                  <Tooltip title="If the API requires authentication, paste your Bearer token or JWT here. It will automatically authorize all imported endpoints.">
+                    <InfoCircleOutlined style={{ color: 'var(--color-text-tertiary)', fontSize: 12 }} />
+                  </Tooltip>
+                </label>
+                <Input.Password
+                  placeholder="e.g. eyJhbGciOi..."
+                  value={newProjectBearerToken}
+                  onChange={e => setNewProjectBearerToken(e.target.value)}
+                />
+              </div>
             </div>
           ) : (
-            <div style={{ marginTop: 10 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                Select Active Project:
+            <div style={{ marginTop: 12 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 5, color: 'var(--color-text-secondary)' }}>
+                Select Target Project
               </label>
               <Select
                 value={selectedProjectId}
                 onChange={setSelectedProjectId}
                 style={{ width: '100%' }}
+                showSearch
+                optionFilterProp="label"
                 loading={isLoadingProjects}
                 options={projects.map(p => ({
                   label: `${p.name} (${p.baseUrl})`,
@@ -443,7 +457,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
               />
             </div>
           )}
-        </Card>
+        </div>
 
         {/* Step 2: Import Method Tabs */}
         <Tabs
@@ -460,25 +474,27 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
               children: (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
-                      Option A: Live Documentation URL (Swagger JSON or OpenAPI 3.0)
+                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 5, color: 'var(--color-text-secondary)' }}>
+                      Option A: Live Documentation URL (Swagger JSON, OpenAPI 3.0, or Swagger UI)
                     </label>
                     <Input
-                      prefix={<LinkOutlined style={{ color: '#94a3b8' }} />}
-                      placeholder="https://petstore.swagger.io/v2/swagger.json or https://api.myapp.com/openapi.json"
+                      prefix={<LinkOutlined style={{ color: 'var(--color-text-tertiary)' }} />}
+                      placeholder="e.g. https://api.example.com/v3/api-docs or https://api.example.com/swagger-ui/index.html"
                       value={openapiUrl}
                       onChange={e => setOpenapiUrl(e.target.value)}
                       allowClear
                     />
                   </div>
 
-                  <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 12, margin: '2px 0' }}>
-                    — OR —
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '2px 0' }}>
+                    <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+                    <span style={{ color: 'var(--color-text-tertiary)', fontSize: 11, fontWeight: 600 }}>OR</span>
+                    <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
                   </div>
 
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                         Option B: Paste Specification (JSON or YAML)
                       </label>
                       <Upload beforeUpload={handleFileUpload} showUploadList={false} accept=".json,.yaml,.yml">
@@ -490,7 +506,13 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                       placeholder={`openapi: 3.0.0\ninfo:\n  title: My Service API\n  version: 1.0.0\npaths:\n  /users:\n    get:\n      summary: List all users\n    post:\n      summary: Create new user`}
                       value={openapiRaw}
                       onChange={e => setOpenapiRaw(e.target.value)}
-                      style={{ fontFamily: 'monospace', fontSize: 12 }}
+                      style={{
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: 12,
+                        background: 'var(--color-bg-base)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text)',
+                      }}
                     />
                   </div>
                 </div>
@@ -511,8 +533,8 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                     message="Export your Postman collection as JSON (Collection v2.1 recommended) and paste it below or upload the file."
                   />
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
                         Paste Postman Collection JSON
                       </label>
                       <Upload beforeUpload={handleFileUpload} showUploadList={false} accept=".json">
@@ -524,7 +546,13 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                       placeholder={`{\n  "info": {\n    "name": "My API Collection",\n    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"\n  },\n  "item": [\n    {\n      "name": "Get Account Profile",\n      "request": {\n        "method": "GET",\n        "url": "https://api.example.com/v1/profile"\n      }\n    }\n  ]\n}`}
                       value={postmanRaw}
                       onChange={e => setPostmanRaw(e.target.value)}
-                      style={{ fontFamily: 'monospace', fontSize: 12 }}
+                      style={{
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: 12,
+                        background: 'var(--color-bg-base)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text)',
+                      }}
                     />
                   </div>
                 </div>
@@ -545,7 +573,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                     message="Paste one or multiple cURL commands (e.g. from Chrome DevTools 'Copy as cURL', Postman, or terminal). Each command will be converted into an endpoint."
                   />
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 5, color: 'var(--color-text-secondary)' }}>
                       Paste cURL Command(s)
                     </label>
                     <TextArea
@@ -553,7 +581,13 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                       placeholder={`curl -X GET "https://api.example.com/v1/users?status=active" -H "Authorization: Bearer token"\n\ncurl -X POST "https://api.example.com/v1/orders" -H "Content-Type: application/json" -d '{"item":"book"}'`}
                       value={curlRaw}
                       onChange={e => setCurlRaw(e.target.value)}
-                      style={{ fontFamily: 'monospace', fontSize: 12 }}
+                      style={{
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: 12,
+                        background: 'var(--color-bg-base)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text)',
+                      }}
                     />
                   </div>
                 </div>
@@ -574,7 +608,7 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                     message="Quickly specify routes line-by-line in format: METHOD /path - Optional Description"
                   />
                   <div>
-                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4, color: '#334155' }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 5, color: 'var(--color-text-secondary)' }}>
                       Route Definitions (One per line)
                     </label>
                     <TextArea
@@ -582,7 +616,13 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
                       placeholder={`GET /api/v1/users - List users\nPOST /api/v1/users - Create new user\nGET /api/v1/users/:id - Get user by ID\nPUT /api/v1/users/:id - Update user details\nDELETE /api/v1/users/:id - Delete user\nGET /api/v1/health - System health check`}
                       value={routesRaw}
                       onChange={e => setRoutesRaw(e.target.value)}
-                      style={{ fontFamily: 'monospace', fontSize: 12 }}
+                      style={{
+                        fontFamily: 'var(--font-mono, monospace)',
+                        fontSize: 12,
+                        background: 'var(--color-bg-base)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text)',
+                      }}
                     />
                   </div>
                 </div>
@@ -595,15 +635,15 @@ export const ApiImportModal: React.FC<ApiImportModalProps> = ({
         {previewResult && (
           <div style={{ marginTop: 20 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <span style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
                   Discovered Endpoints ({previewResult.endpoints.length})
                 </span>
-                <Tag color="geekblue" style={{ marginLeft: 8, textTransform: 'uppercase' }}>
+                <Tag style={{ textTransform: 'uppercase', fontWeight: 600, background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}>
                   {previewResult.format}
                 </Tag>
                 {previewResult.suggestedBaseUrl && (
-                  <Text code style={{ fontSize: 12, marginLeft: 6 }}>
+                  <Text code style={{ fontSize: 12 }}>
                     Origin: {previewResult.suggestedBaseUrl}
                   </Text>
                 )}

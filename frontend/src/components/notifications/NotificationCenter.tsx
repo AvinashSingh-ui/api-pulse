@@ -71,10 +71,10 @@ export const NotificationCenter: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '12px 16px',
-        borderBottom: '1px solid #f1f5f9',
+        borderBottom: '1px solid var(--color-border)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>Notifications</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)' }}>Notifications</span>
           {unreadCount > 0 && (
             <Tag color="processing" style={{ borderRadius: 10, fontSize: 11, padding: '0 6px' }}>
               {unreadCount} new
@@ -118,7 +118,7 @@ export const NotificationCenter: React.FC = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div style={{ padding: '0 16px', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ padding: '0 16px', borderBottom: '1px solid var(--color-border)' }}>
         <Tabs
           size="small"
           activeKey={activeFilter}
@@ -138,14 +138,14 @@ export const NotificationCenter: React.FC = () => {
         {isLoading && notifications.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '36px 0' }}>
             <Spin size="small" />
-            <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8 }}>Checking alerts...</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 8 }}>Checking alerts...</div>
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div style={{ padding: '36px 16px', textAlign: 'center' }}>
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
-                <span style={{ color: '#64748b', fontSize: 13 }}>
+                <span style={{ color: 'var(--color-text-secondary)', fontSize: 13 }}>
                   No notifications {activeFilter !== 'all' ? `in ${activeFilter}` : 'yet'}
                 </span>
               }
@@ -164,7 +164,7 @@ export const NotificationCenter: React.FC = () => {
             ) : isSuccess ? (
               <CheckCircleOutlined style={{ color: '#22c55e', fontSize: 16 }} />
             ) : (
-              <InfoCircleOutlined style={{ color: '#0958d9', fontSize: 16 }} />
+              <InfoCircleOutlined style={{ color: 'var(--color-primary)', fontSize: 16 }} />
             );
 
             return (
@@ -173,17 +173,17 @@ export const NotificationCenter: React.FC = () => {
                 onClick={() => handleNotificationClick(n)}
                 style={{
                   padding: '12px 16px',
-                  borderBottom: '1px solid #f8fafc',
-                  background: n.isRead ? '#ffffff' : '#f0f7ff',
+                  borderBottom: '1px solid var(--color-border)',
+                  background: n.isRead ? 'transparent' : 'var(--color-bg-tertiary)',
                   cursor: 'pointer',
                   transition: 'background 0.2s',
                   position: 'relative',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = n.isRead ? '#f8fafc' : '#e6f4ff';
+                  e.currentTarget.style.background = 'var(--color-surface-hover)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = n.isRead ? '#ffffff' : '#f0f7ff';
+                  e.currentTarget.style.background = n.isRead ? 'transparent' : 'var(--color-bg-tertiary)';
                 }}
               >
                 {!n.isRead && (
@@ -195,7 +195,7 @@ export const NotificationCenter: React.FC = () => {
                       width: 6,
                       height: 6,
                       borderRadius: '50%',
-                      background: '#0958d9',
+                      background: 'var(--color-primary)',
                     }}
                   />
                 )}
@@ -203,15 +203,15 @@ export const NotificationCenter: React.FC = () => {
                   <div style={{ marginTop: 2 }}>{severityIcon}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: n.isRead ? 500 : 700, color: '#0f172a' }}>
+                      <span style={{ fontSize: 13, fontWeight: n.isRead ? 500 : 700, color: 'var(--color-text)' }}>
                         {n.title}
                       </span>
-                      <span style={{ fontSize: 11, color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: 11, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
                         {fromNow(n.createdAt)}
                       </span>
                     </div>
 
-                    <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.4, marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.4, marginBottom: 6 }}>
                       {n.message}
                     </div>
 
@@ -219,7 +219,7 @@ export const NotificationCenter: React.FC = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {n.method && <HttpMethodTag method={n.method} size="sm" />}
                         {n.endpointPath && (
-                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#0958d9', fontWeight: 600 }}>
+                          <span style={{ fontSize: 11, fontFamily: 'monospace', color: 'var(--color-text)', fontWeight: 600 }}>
                             {n.endpointPath}
                           </span>
                         )}
@@ -307,7 +307,7 @@ export const NotificationCenter: React.FC = () => {
       <Badge count={unreadCount} overflowCount={99} size="small">
         <Button
           type="text"
-          icon={<BellOutlined style={{ fontSize: 18, color: unreadCount > 0 ? '#0958d9' : '#475569' }} />}
+          icon={<BellOutlined style={{ fontSize: 18, color: unreadCount > 0 ? 'var(--color-primary)' : 'var(--color-text)' }} />}
           style={{ width: 38, height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8 }}
         />
       </Badge>

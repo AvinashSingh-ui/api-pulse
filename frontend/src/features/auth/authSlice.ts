@@ -38,6 +38,38 @@ export const registerThunk = createAsyncThunk(
   },
 );
 
+export const oauthThunk = createAsyncThunk(
+  'auth/oauth',
+  async (
+    payload: { provider: 'google' | 'microsoft'; email?: string; name?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const data = await authService.oauthLogin(payload);
+      return data;
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message ?? 'OAuth authentication failed';
+      return rejectWithValue(msg);
+    }
+  },
+);
+
+export const verifyOidcOtpThunk = createAsyncThunk(
+  'auth/verifyOidcOtp',
+  async (
+    payload: { provider: 'google' | 'microsoft' | 'email'; email: string; otp: string; name?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const data = await authService.verifyOidcOtp(payload);
+      return data;
+    } catch (err: unknown) {
+      const msg = (err as { message?: string })?.message ?? 'OIDC OTP verification failed';
+      return rejectWithValue(msg);
+    }
+  },
+);
+
 export const logoutThunk = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
@@ -91,6 +123,40 @@ const authSlice = createSlice({
         storage.set(USER_KEY, action.payload.user);
       })
       .addCase(loginThunk.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error     = action.payload as string;
+      })
+      // oauth
+      .addCase(oauthThunk.pending, (state) => {
+        state.isLoading = true;
+        state.error     = null;
+      })
+      .addCase(oauthThunk.fulfilled, (state, action) => {
+        state.isLoading       = false;
+        state.isAuthenticated = true;
+        state.user            = action.payload.user;
+        state.token           = action.payload.token;
+        localStorage.setItem(TOKEN_KEY, action.payload.token);
+        storage.set(USER_KEY, action.payload.user);
+      })
+      .addCase(oauthThunk.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error     = action.payload as string;
+      })
+      // verifyOidcOtp
+      .addCase(verifyOidcOtpThunk.pending, (state) => {
+        state.isLoading = true;
+        state.error     = null;
+      })
+      .addCase(verifyOidcOtpThunk.fulfilled, (state, action) => {
+        state.isLoading       = false;
+        state.isAuthenticated = true;
+        state.user            = action.payload.user;
+        state.token           = action.payload.token;
+        localStorage.setItem(TOKEN_KEY, action.payload.token);
+        storage.set(USER_KEY, action.payload.user);
+      })
+      .addCase(verifyOidcOtpThunk.rejected, (state, action) => {
         state.isLoading = false;
         state.error     = action.payload as string;
       })

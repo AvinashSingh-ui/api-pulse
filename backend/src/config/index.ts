@@ -9,6 +9,14 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   defaultInterval: parseInt(process.env.MONITORING_INTERVAL_DEFAULT || '60', 10),
+  smtp: {
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587', 10),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER || '',
+    pass: process.env.SMTP_PASS || '',
+    from: process.env.SMTP_FROM || 'API Pulse <no-reply@apipulse.io>',
+  },
   apiPrefix: process.env.API_PREFIX || '/api/v1',
   apiBaseUrl: process.env.API_BASE_URL || `http://localhost:${process.env.PORT || '8000'}/api/v1`,
   routes: {

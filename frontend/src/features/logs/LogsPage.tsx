@@ -21,12 +21,14 @@ import { StatCard }      from '@/components/common/StatCard';
 import { HttpMethodTag } from '@/components/common/HttpMethodTag';
 import { formatBytes, formatResponseTime, formatDateTime } from '@/utils';
 import { logsService }   from '@/services/endpoints/logs';
+import { useTheme } from '@/hooks/useTheme';
 import type { RequestLog, HttpMethod } from '@/types';
 
 const statusCodeColor = (code: number): string =>
   code < 300 ? 'success' : code < 400 ? 'processing' : code < 500 ? 'warning' : 'error';
 
 export default function LogsPage() {
+  const { isDark } = useTheme();
   const [logs, setLogs] = useState<RequestLog[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -118,12 +120,24 @@ export default function LogsPage() {
       key: 'status',
       width: 90,
       render: (code: number) => (
-        <Tag
-          color={statusCodeColor(code)}
-          style={{ fontFamily: 'monospace', fontWeight: 700 }}
+        <span
+          className={
+            code < 300
+              ? 'status-pill-2xx'
+              : code < 400
+              ? 'status-pill-3xx'
+              : code < 500
+              ? 'status-pill-4xx'
+              : 'status-pill-5xx'
+          }
+          style={{
+            padding: '2px 8px',
+            fontSize: 12,
+            display: 'inline-block',
+          }}
         >
           {code}
-        </Tag>
+        </span>
       ),
       sorter: (a, b) => a.statusCode - b.statusCode,
     },
@@ -198,7 +212,7 @@ export default function LogsPage() {
           <StatCard
             title="Total Requests Logged"
             value={total.toLocaleString()}
-            color="#4f46e5"
+            color="#71717a"
             loading={loading}
           />
         </Col>
@@ -290,7 +304,7 @@ export default function LogsPage() {
               onClick: () => setSelected(r),
               style: {
                 cursor: 'pointer',
-                background: r.statusCode >= 500 ? '#fff5f5' : undefined,
+                background: r.statusCode >= 500 ? (isDark ? 'rgba(239, 68, 68, 0.08)' : '#fef2f2') : undefined,
               },
             })}
             pagination={{
@@ -328,9 +342,20 @@ export default function LogsPage() {
               <code>{selected.path}</code>
             </Descriptions.Item>
             <Descriptions.Item label="Status Code">
-              <Tag color={statusCodeColor(selected.statusCode)}>
+              <span
+                className={
+                  selected.statusCode < 300
+                    ? 'status-pill-2xx'
+                    : selected.statusCode < 400
+                    ? 'status-pill-3xx'
+                    : selected.statusCode < 500
+                    ? 'status-pill-4xx'
+                    : 'status-pill-5xx'
+                }
+                style={{ padding: '2px 8px', fontSize: 12, display: 'inline-block' }}
+              >
                 {selected.statusCode}
-              </Tag>
+              </span>
             </Descriptions.Item>
             <Descriptions.Item label="Response Time">
               {formatResponseTime(selected.responseTime)}

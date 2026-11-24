@@ -93,7 +93,7 @@ export const NotificationNotifier: React.FC = () => {
           ),
           description: (
             <div>
-              <div style={{ color: '#475569', fontSize: 13, marginBottom: 6 }}>{n.message}</div>
+              <div style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 6 }}>{n.message}</div>
               {n.metadata?.failureReason && (
                 <div style={{ fontSize: 12, color: '#ef4444', fontWeight: 500 }}>
                   Detail: {n.metadata.failureReason}

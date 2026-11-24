@@ -4,11 +4,27 @@ import { config } from '../../config/index.js';
 import { db } from '../../db/store.js';
 import type { AIInsight, Endpoint, RequestLog } from '../../types/index.js';
 
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-2.0-flash-exp', 'gemini-3-flash-preview'];
+const GEMINI_MODELS = [
+  'gemini-2.5-flash-lite',
+  'gemini-flash-latest',
+  'gemini-flash-lite-latest',
+  'gemini-3.1-flash-lite',
+  'gemini-3.1-pro-preview',
+  'gemini-2.5-flash',
+  'gemini-pro-latest',
+];
+
+// Module-level Circuit Breaker for Gemini Free Tier Quota limits
+let quotaExceededUntil = 0;
 
 async function requestGemini(prompt: string, jsonMode = false): Promise<string | null> {
   const apiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
+
+  // If quota limit was exceeded recently, immediately fall back without blocking Node event loop
+  if (Date.now() < quotaExceededUntil) {
+    return null;
+  }
 
   for (const model of GEMINI_MODELS) {
     try {
@@ -25,14 +41,23 @@ async function requestGemini(prompt: string, jsonMode = false): Promise<string |
       const res = await axios.post(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         payload,
-        { timeout: 20000 }
+        { timeout: 6000 }
       );
 
       const reply = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (reply) return reply;
     } catch (err: any) {
-      // Continue to next model if available
-      console.warn(`[AI] Gemini model ${model} attempt failed:`, err.response?.data?.error?.message || err.message);
+      const status = err.response?.status;
+      const msg = (err.response?.data?.error?.message || err.message || '').toLowerCase();
+      if (status === 429 || msg.includes('quota') || msg.includes('limit exceeded') || msg.includes('resourceexhausted')) {
+        quotaExceededUntil = Date.now() + 15 * 60 * 1000; // 15-minute cooldown
+        console.warn(`[AI] Gemini API quota reached (HTTP 429). Circuit breaker engaged for 15m; falling back to instant SRE Heuristic Engine.`);
+        break; // Stop immediately; do not hammer remaining models on exhausted key
+      } else if (status === 404 || msg.includes('not found') || msg.includes('no longer available')) {
+        continue;
+      } else {
+        console.warn(`[AI] Model ${model} unavailable: ${msg.slice(0, 80)}`);
+      }
     }
   }
 

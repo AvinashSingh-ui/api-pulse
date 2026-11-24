@@ -9,7 +9,7 @@ import {
   ThunderboltOutlined, ReloadOutlined, CopyOutlined,
   GlobalOutlined, DeleteOutlined, EyeOutlined, CheckOutlined,
   ApiOutlined, RiseOutlined, BellOutlined,
-  SettingOutlined, ImportOutlined,
+  SettingOutlined, ImportOutlined, KeyOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { ColumnsType } from 'antd/es/table';
@@ -57,7 +57,7 @@ export default function ProjectDetailPage() {
     try {
       const [projData, epsData, alertsData, logsData] = await Promise.all([
         projectsService.get(projectId).catch(() => null),
-        endpointsService.list({ projectId }).catch(() => ({ data: [] })),
+        endpointsService.list({ projectId, pageSize: 1000 }).catch(() => ({ data: [] })),
         alertsService.listAlerts({ projectId }).catch(() => ({ data: [] })),
         logsService.list({ projectId }).catch(() => ({ data: [] })),
       ]);
@@ -69,6 +69,10 @@ export default function ProjectDetailPage() {
           description: projData.description,
           baseUrl: projData.baseUrl,
           environment: projData.environment,
+          bearerToken: projData.bearerToken,
+          apiKey: projData.apiKey,
+          apiKeyHeader: projData.apiKeyHeader || 'x-api-key',
+          headersText: projData.headers ? JSON.stringify(projData.headers, null, 2) : '',
         });
       }
       setEndpoints(epsData.data || []);
@@ -187,9 +191,21 @@ export default function ProjectDetailPage() {
   const handleSaveSettings = async () => {
     try {
       const values = await settingsForm.validateFields();
-      const updated = await projectsService.update(projectId, values);
+      let parsedHeaders: Record<string, string> | undefined = undefined;
+      if (values.headersText && values.headersText.trim()) {
+        try {
+          parsedHeaders = JSON.parse(values.headersText.trim());
+        } catch {
+          message.error('Custom Headers must be valid JSON');
+          return;
+        }
+      }
+      const updated = await projectsService.update(projectId, {
+        ...values,
+        headers: parsedHeaders,
+      });
       setProject(updated);
-      message.success('Project settings updated successfully!');
+      message.success('Project settings and authentication credentials updated successfully!');
     } catch {
       message.error('Failed to update settings');
     }
@@ -257,7 +273,7 @@ export default function ProjectDetailPage() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
             <HttpMethodTag method={r.method} size="sm" />
-            <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: '#1e293b', fontWeight: 600 }}>{r.path}</span>
+            <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace', color: 'var(--color-text)', fontWeight: 600 }}>{r.path}</span>
           </div>
           <span style={{ fontSize: 12, color: '#94a3b8' }}>{r.name}</span>
         </div>
@@ -376,10 +392,10 @@ export default function ProjectDetailPage() {
             <Tag color={project.environment === 'production' ? 'red' : 'orange'} style={{ fontWeight: 700, fontSize: 11 }}>
               {project.environment.toUpperCase()}
             </Tag>
-            <Badge status="processing" text={<span style={{ fontWeight: 600, color: '#0f172a' }}>Active Monitoring</span>} />
+            <Badge status="processing" text={<span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Active Monitoring</span>} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
               <GlobalOutlined style={{ color: '#64748b', fontSize: 13 }} />
-              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#334155' }}>{project.baseUrl}</span>
+              <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--color-text-secondary)' }}>{project.baseUrl}</span>
               <Tooltip title="Copy Application Deployed Link / Base URL">
                 <Button type="text" size="small" icon={<CopyOutlined />} onClick={handleCopyBaseUrl} style={{ padding: '0 4px', height: 20 }} />
               </Tooltip>
@@ -555,7 +571,7 @@ export default function ProjectDetailPage() {
                   {alerts.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                       <CheckOutlined style={{ fontSize: 32, color: '#22c55e', marginBottom: 12 }} />
-                      <p style={{ fontSize: 15, fontWeight: 600, color: '#0f172a' }}>No incidents recorded</p>
+                      <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)' }}>No incidents recorded</p>
                       <p>All endpoints in {project.name} are operating normally.</p>
                     </div>
                   ) : (
@@ -577,7 +593,7 @@ export default function ProjectDetailPage() {
                           key: 'title',
                           render: (_, r) => (
                             <div>
-                              <div style={{ fontWeight: 600, color: '#0f172a' }}>{r.title}</div>
+                              <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{r.title}</div>
                               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{r.message}</div>
                             </div>
                           ),
@@ -660,6 +676,47 @@ export default function ProjectDetailPage() {
                         ]}
                       />
                     </Form.Item>
+
+                    <div style={{ marginTop: 24, marginBottom: 16, padding: '14px 16px', borderRadius: 10, background: 'var(--color-bg-tertiary)', border: '1px solid var(--color-border)' }}>
+                      <h4 style={{ color: 'var(--color-text)', fontWeight: 700, margin: '0 0 6px', display: 'flex', alignItems: 'center', gap: 6, fontSize: 14 }}>
+                        <KeyOutlined /> Project Authentication & Global Headers
+                      </h4>
+                      <p style={{ color: 'var(--color-text-secondary)', fontSize: 12, margin: 0 }}>
+                        These credentials and headers will be automatically applied to all endpoints in this microservice project during health monitoring and test execution.
+                      </p>
+                    </div>
+
+                    <Form.Item
+                      name="bearerToken"
+                      label="Global Bearer Token / JWT Secret"
+                      tooltip="Sent as 'Authorization: Bearer <token>' for every endpoint in this project (unless overridden by an endpoint)"
+                    >
+                      <Input.Password placeholder="Paste your Bearer token or JWT here" />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="apiKey"
+                      label="Global API Key (Optional)"
+                      tooltip="API key sent in custom header for every endpoint in this microservice"
+                    >
+                      <Input placeholder="e.g. api_key_123456789" />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="apiKeyHeader"
+                      label="API Key Header Name"
+                    >
+                      <Input placeholder="x-api-key" />
+                    </Form.Item>
+
+                    <Form.Item
+                      name="headersText"
+                      label="Default Custom Headers (JSON format)"
+                      tooltip="Optional JSON key-value pairs applied to every endpoint in this project"
+                    >
+                      <Input.TextArea rows={3} placeholder={'{\n  "X-Custom-Tenant": "tenant_1"\n}'} />
+                    </Form.Item>
+
                     <Form.Item>
                       <Button type="primary" htmlType="submit">
                         Save Project Settings
@@ -668,9 +725,9 @@ export default function ProjectDetailPage() {
                   </Form>
 
                   {/* Danger Zone: Move to Project History */}
-                  <div style={{ marginTop: 36, borderTop: '1px solid #fee2e2', paddingTop: 20 }}>
+                  <div style={{ marginTop: 36, borderTop: '1px solid var(--color-border)', paddingTop: 20 }}>
                     <h4 style={{ color: '#ef4444', fontWeight: 600, margin: '0 0 6px' }}>Danger Zone</h4>
-                    <p style={{ color: '#64748b', fontSize: 13, marginBottom: 14 }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, marginBottom: 14 }}>
                       Soft-deleting this project moves it to Project History and pauses live health monitoring for all associated endpoints. You can restore it anytime.
                     </p>
                     <Popconfirm

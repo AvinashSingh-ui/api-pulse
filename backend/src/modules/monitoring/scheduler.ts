@@ -1,11 +1,7 @@
-import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../db/store.js';
-import { sqliteService } from '../../db/sqlite.js';
-import type { Endpoint, RequestLog, Alert } from '../../types/index.js';
-import { healthService } from './health.service.js';
-import { notificationService } from '../notifications/notification.service.js';
-import { aiService } from '../ai/ai.service.js';
+import type { Endpoint, Alert } from '../../types/index.js';
+import { apiExecutionService } from './apiExecution.service.js';
 
 class MonitoringScheduler {
   private timer: NodeJS.Timeout | null = null;
@@ -71,228 +67,23 @@ class MonitoringScheduler {
   }
 
   private async pingEndpoint(endpoint: Endpoint): Promise<void> {
-    const prevStatus = endpoint.status;
     const project = db.projects.find(p => p.id === endpoint.projectId);
     if (!project || project.status === 'deleted' || project.deletedAt) {
-      return; // Do not monitor endpoints of deleted projects
+      return;
     }
-
-    // Safe URL Construction
-    const targetUrl = healthService.buildFullUrl(project.baseUrl, endpoint.path);
-
-    let resolvedUrl = targetUrl;
-    if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
-      if (resolvedUrl.startsWith('localhost') || resolvedUrl.startsWith('127.0.0.1')) {
-        resolvedUrl = `http://${resolvedUrl}`;
-      } else if (resolvedUrl.includes('.')) {
-        resolvedUrl = `https://${resolvedUrl}`;
-      }
-    }
-
-    const startTime = Date.now();
-    let measuredRt = 0;
-    let statusCode = 200;
-    let isSuccess = true;
-    let failureType: RequestLog['failureType'] = 'none';
-    let errorMessage: string | undefined;
 
     try {
-      if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
-        measuredRt = Date.now() - startTime;
-        isSuccess = false;
-        statusCode = 400;
-        failureType = 'network_error';
-        errorMessage = `Invalid URL: Target URL "${targetUrl}" must use HTTP or HTTPS protocol`;
-      } else {
-        const methodUpper = (endpoint.method || 'GET').toUpperCase();
-        const hasRequestBody = methodUpper === 'POST' || methodUpper === 'PUT' || methodUpper === 'PATCH';
+      const result = await apiExecutionService.executeEndpointCheck(
+        endpoint,
+        '127.0.0.1',
+        'API-Pulse-Automated-Monitor/1.0'
+      );
 
-        // Parse custom headers
-        let customHeaders: Record<string, string> = {};
-        if (endpoint.headers) {
-          if (typeof endpoint.headers === 'string') {
-            try { customHeaders = JSON.parse(endpoint.headers); } catch {}
-          } else if (typeof endpoint.headers === 'object') {
-            customHeaders = { ...endpoint.headers };
-          }
-        }
-
-        const requestHeaders: Record<string, string> = {
-          'Accept': 'application/json, text/plain, */*',
-          ...(hasRequestBody ? { 'Content-Type': 'application/json' } : {}),
-          ...customHeaders,
-        };
-
-        // Parse body
-        let requestData: any = undefined;
-        if (endpoint.body !== undefined && endpoint.body !== null && endpoint.body !== '') {
-          if (typeof endpoint.body === 'string') {
-            const trimmed = endpoint.body.trim();
-            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-              try {
-                requestData = JSON.parse(trimmed);
-              } catch {
-                requestData = trimmed;
-              }
-            } else {
-              requestData = trimmed;
-            }
-          } else {
-            requestData = endpoint.body;
-          }
-        } else if (hasRequestBody) {
-          requestData = {};
-        }
-
-        const response = await axios({
-          method: methodUpper.toLowerCase(),
-          url: resolvedUrl,
-          timeout: Math.min(endpoint.timeout || 5000, 10000),
-          validateStatus: () => true, // Don't throw on non-2xx
-          headers: requestHeaders,
-          data: requestData,
-        });
-        measuredRt = Date.now() - startTime;
-        statusCode = response.status;
-        isSuccess = statusCode === (endpoint.expectedStatus || 200);
-        if (!isSuccess) {
-          failureType = 'unexpected_status';
-          errorMessage = `HTTP ${statusCode} (Expected ${endpoint.expectedStatus || 200})`;
-        }
-      }
+      // Check custom alert rule triggers
+      this.evaluateAlertsForEndpoint(endpoint, result.responseTime, result.isSuccess);
     } catch (err: any) {
-      measuredRt = Date.now() - startTime;
-      isSuccess = false;
-      if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
-        failureType = 'timeout';
-        statusCode = 504;
-        errorMessage = `Request timed out after ${endpoint.timeout || 5000}ms`;
-      } else if (err.code === 'ECONNREFUSED') {
-        failureType = 'connection_refused';
-        statusCode = 502;
-        errorMessage = 'ECONNREFUSED: Server unreachable';
-      } else {
-        failureType = 'network_error';
-        statusCode = 503;
-        errorMessage = err.message || 'Target host connection error';
-      }
+      console.warn(`[Scheduler] Health check error for endpoint ${endpoint.id}:`, err.message);
     }
-
-    // Log request
-    const newLog: RequestLog = {
-      id: `log_${uuidv4().slice(0, 8)}`,
-      endpointId: endpoint.id,
-      projectId: endpoint.projectId,
-      method: endpoint.method,
-      path: endpoint.path,
-      statusCode,
-      responseTime: measuredRt,
-      requestSize: 320,
-      responseSize: 1420,
-      ip: '127.0.0.1',
-      userAgent: 'API-Pulse-Automated-Monitor/1.0',
-      timestamp: new Date().toISOString(),
-      failureType,
-      error: errorMessage,
-    };
-
-    db.logs.unshift(newLog);
-    if (db.logs.length > 500) db.logs.pop();
-
-    // Calculate real historical health & metrics
-    const recentLogs = db.logs.filter(l => l.endpointId === endpoint.id);
-    const healthResult = healthService.calculateHealth({
-      currentStatusCode: statusCode,
-      currentResponseTime: measuredRt,
-      expectedStatus: endpoint.expectedStatus || 200,
-      latencyThresholdMs: endpoint.latencyThresholdMs || 500,
-      failureType,
-      recentLogs,
-      timeout: endpoint.timeout || 5000,
-    });
-
-    // Update endpoint stats
-    endpoint.lastChecked = new Date().toISOString();
-    endpoint.lastStatusCode = statusCode;
-    endpoint.status = healthResult.status;
-    endpoint.healthScore = healthResult.healthScore;
-    endpoint.degradationReason = healthResult.degradationReason;
-    endpoint.responseTimeP50 = healthResult.responseTimeP50;
-    endpoint.responseTimeP95 = healthResult.responseTimeP95;
-    endpoint.responseTimeP99 = healthResult.responseTimeP99;
-    endpoint.uptime = healthResult.uptime;
-
-    // Persist to SQLite
-    if (sqliteService.isConnected) {
-      try {
-        sqliteService.execute(
-          'UPDATE endpoints SET status = ?, health_score = ?, degradation_reason = ?, last_status_code = ?, p50_ms = ?, p95_ms = ?, p99_ms = ?, uptime = ?, last_checked = ? WHERE id = ?',
-          [endpoint.status, endpoint.healthScore, endpoint.degradationReason, endpoint.lastStatusCode, endpoint.responseTimeP50, endpoint.responseTimeP95, endpoint.responseTimeP99, endpoint.uptime, endpoint.lastChecked, endpoint.id]
-        );
-        sqliteService.execute(
-          'INSERT INTO request_logs (id, endpoint_id, project_id, method, path, status_code, response_time_ms, request_size, response_size, ip_address, user_agent, failure_type, error_message, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [newLog.id, newLog.endpointId, newLog.projectId, newLog.method, newLog.path, newLog.statusCode, newLog.responseTime, newLog.requestSize, newLog.responseSize, newLog.ip, newLog.userAgent, newLog.failureType, newLog.error || null, newLog.timestamp]
-        );
-      } catch (err: any) {
-        console.warn('[Scheduler] SQLite persist error:', err.message);
-      }
-    }
-
-    // Auto-raise alert if health is degraded or down
-    if (endpoint.status === 'down' || endpoint.status === 'degraded') {
-      const existing = db.alerts.find(a => a.endpointId === endpoint.id && a.status === 'active');
-      if (!existing) {
-        const autoAlert: Alert = {
-          id: `alt_${uuidv4().slice(0, 8)}`,
-          ruleId: 'system_auto_detector',
-          projectId: endpoint.projectId,
-          endpointId: endpoint.id,
-          title: endpoint.status === 'down' ? `Critical Outage: ${endpoint.method} ${endpoint.path} is DOWN` : `Degraded Health: ${endpoint.method} ${endpoint.path}`,
-          message: endpoint.degradationReason || errorMessage || `Health check failed with HTTP ${statusCode} (Expected ${endpoint.expectedStatus || 200})`,
-          severity: endpoint.status === 'down' ? 'critical' : 'high',
-          status: 'active',
-          triggeredAt: new Date().toISOString(),
-          value: statusCode,
-          threshold: endpoint.expectedStatus || 200,
-        };
-        db.alerts.unshift(autoAlert);
-        if (db.alerts.length > 200) db.alerts.pop();
-
-        // Trigger AI Root Cause Analysis in background
-        aiService.analyzeEndpoint(endpoint.id).catch(() => null);
-      }
-    } else {
-      // Auto-resolve when restored
-      const activeForEp = db.alerts.filter(a => a.endpointId === endpoint.id && a.status === 'active');
-      for (const a of activeForEp) {
-        a.status = 'resolved';
-        a.resolvedAt = new Date().toISOString();
-      }
-    }
-
-    // Trigger intelligent health alerts & notifications
-    notificationService.handleHealthTransition({
-      endpoint,
-      prevStatus,
-      newStatus: endpoint.status,
-      statusCode,
-      responseTime: measuredRt,
-      healthScore: endpoint.healthScore,
-      degradationReason: endpoint.degradationReason,
-      failureType,
-    });
-
-    // Check custom alert rule triggers
-    this.evaluateAlertsForEndpoint(endpoint, measuredRt, isSuccess);
-
-    // Update parent project average health score
-    const projectEndpoints = db.endpoints.filter(e => e.projectId === project.id);
-    if (projectEndpoints.length > 0) {
-      const totalHealth = projectEndpoints.reduce((sum, e) => sum + (e.healthScore ?? 100), 0);
-      project.healthScore = Math.round(totalHealth / projectEndpoints.length);
-    }
-
-    db.save();
   }
 
   private evaluateAlertsForEndpoint(endpoint: Endpoint, measuredRt: number, isSuccess: boolean): void {

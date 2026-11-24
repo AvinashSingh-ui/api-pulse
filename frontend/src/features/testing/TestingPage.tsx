@@ -48,10 +48,34 @@ import {
 import { PageHeader } from '@/components/common/PageHeader';
 import { HttpMethodTag } from '@/components/common/HttpMethodTag';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useTheme } from '@/hooks/useTheme';
+import { useAppDispatch } from '@/app/hooks';
+import { apiSlice } from '@/services/apiSlice';
 import { testingService } from '@/services/endpoints/testing';
 import { endpointsService } from '@/services/endpoints/endpoints';
 import { projectsService } from '@/services/endpoints/projects';
 import type { TestCase, TestStatus, Endpoint, Project, HttpMethod, TestAssertion, TestResult } from '@/types';
+
+const HTTP_STATUS_PHRASES: Record<number, string> = {
+  200: 'OK', 201: 'Created', 202: 'Accepted', 204: 'No Content',
+  301: 'Moved Permanently', 302: 'Found', 304: 'Not Modified',
+  400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found',
+  405: 'Method Not Allowed', 408: 'Request Timeout', 409: 'Conflict', 422: 'Unprocessable Entity', 429: 'Too Many Requests',
+  500: 'Internal Server Error', 502: 'Bad Gateway', 503: 'Service Unavailable', 504: 'Gateway Timeout',
+};
+
+const getFormattedStatus = (code: number, text?: string) => {
+  const defaultPhrase = HTTP_STATUS_PHRASES[code] || '';
+  if (!text) return defaultPhrase ? `${code} ${defaultPhrase}` : String(code);
+  const clean = String(text).trim();
+  // Prevent any duplicate numbers e.g. "400 400" or statusText === "400"
+  if (clean === String(code) || clean === `${code} ${code}` || /^\d+$/.test(clean)) {
+    return defaultPhrase ? `${code} ${defaultPhrase}` : String(code);
+  }
+  const stripped = clean.replace(new RegExp(`^${code}\\s*`, 'i'), '').trim();
+  const phrase = stripped || defaultPhrase;
+  return phrase ? `${code} ${phrase}` : String(code);
+};
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -84,7 +108,9 @@ const statusColor = (s?: TestStatus): string => {
 const HTTP_METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 export default function TestingPage() {
+  const dispatch = useAppDispatch();
   const { isTablet } = useResponsive();
+  const { isDark } = useTheme();
 
   // Test cases & endpoints state
   const [testCases, setTestCases] = useState<TestCase[]>([]);
@@ -98,7 +124,7 @@ export default function TestingPage() {
 
   // Active Request Builder State (Postman style)
   const [method, setMethod] = useState<HttpMethod>('GET');
-  const [url, setUrl] = useState<string>('https://httpbin.org/get');
+  const [url, setUrl] = useState<string>('');
   const [testName, setTestName] = useState<string>('Custom API Verification');
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | undefined>(undefined);
 
@@ -129,7 +155,7 @@ export default function TestingPage() {
     try {
       const [casesRes, epRes, projRes] = await Promise.all([
         testingService.listTestCases().catch(() => ({ data: [] })),
-        endpointsService.list({ pageSize: 100 }).catch(() => ({ data: [] })),
+        endpointsService.list({ pageSize: 1000 }).catch(() => ({ data: [] })),
         projectsService.list({ pageSize: 100 }).catch(() => ({ data: [] })),
       ]);
 
@@ -209,7 +235,7 @@ export default function TestingPage() {
     setSelectedCaseId(null);
     setTestName('New Custom API Request');
     setMethod('GET');
-    setUrl('https://httpbin.org/get');
+    setUrl('');
     setSelectedEndpointId(undefined);
     setParams([]);
     setHeaders([
@@ -230,17 +256,101 @@ export default function TestingPage() {
     const ep = endpoints.find(e => e.id === epId);
     if (!ep) return;
     const proj = projects.find(p => p.id === ep.projectId);
-    const fullUrl = proj?.baseUrl ? `${proj.baseUrl.replace(/\/+$/, '')}/${ep.path.replace(/^\/+/, '')}` : ep.path;
+    let rawUrl = proj?.baseUrl ? `${proj.baseUrl.replace(/\/+$/, '')}/${ep.path.replace(/^\/+/, '')}` : ep.path;
+
+    // Resolve template path parameters in URL e.g. /users/{id} -> /users/1
+    rawUrl = rawUrl.replace(/\{([a-zA-Z0-9_-]+)\}|:([a-zA-Z0-9_-]+)/g, (_match, p1, p2) => {
+      const key = p1 || p2;
+      if (ep.pathParams && ep.pathParams[key] !== undefined) {
+        return encodeURIComponent(ep.pathParams[key]);
+      }
+      const lower = (key || '').toLowerCase();
+      if (lower.includes('country') || lower.includes('countries')) return 'US';
+      if (lower.includes('provideraccount')) return 'acc_1';
+      if (lower.includes('provider')) return 'custom';
+      if (lower.includes('entity') || lower.includes('type')) return 'customer';
+      if (lower.includes('account') || lower.includes('contact') || lower.includes('lead') || lower.includes('process')) return '1';
+      if (lower.includes('uuid') || lower.includes('id')) return '00000000-0000-0000-0000-000000000001';
+      if (lower.includes('num') || lower.includes('count') || lower.includes('page') || lower.includes('limit')) return '1';
+      if (lower.includes('token') || lower.includes('jwt') || lower.includes('hash')) return 'test_token';
+      if (lower.includes('name') || lower.includes('slug') || lower.includes('item')) return 'sample_item';
+      if (lower.includes('email')) return 'test%40example.com';
+      if (lower.includes('date')) return '2026-01-01';
+      return '1';
+    });
 
     setSelectedEndpointId(ep.id);
     setMethod(ep.method);
-    setUrl(fullUrl);
+    setUrl(rawUrl);
     setTestName(`Verify ${ep.method} ${ep.path}`);
+
+    // Load body for POST, PUT, PATCH, DELETE
+    const isBodyMethod = ['POST', 'PUT', 'PATCH'].includes(ep.method);
+    if (ep.body && ep.body.trim()) {
+      setBodyContent(ep.body.trim());
+      setBodyType('json');
+    } else if (isBodyMethod) {
+      setBodyContent('{\n  "status": "active"\n}');
+      setBodyType('json');
+    } else {
+      setBodyContent('');
+      setBodyType('none');
+    }
+
+    // Load headers
+    const newHeaders: KeyValueRow[] = [
+      { id: 'h_1', key: 'Accept', value: 'application/json', enabled: true },
+    ];
+    if (isBodyMethod || ep.body) {
+      newHeaders.push({ id: 'h_2', key: 'Content-Type', value: ep.contentType || 'application/json', enabled: true });
+    }
+    if (ep.headers) {
+      Object.entries(ep.headers).forEach(([k, v], idx) => {
+        if (k.toLowerCase() !== 'accept' && k.toLowerCase() !== 'content-type' && !String(v).includes('<YOUR_TOKEN>')) {
+          newHeaders.push({ id: `h_ep_${idx}`, key: k, value: String(v), enabled: true });
+        }
+      });
+    }
+
+    // Auto-inject project headers (e.g. x-product-id)
+    if (proj?.headers) {
+      let pH: Record<string, string> = {};
+      if (typeof proj.headers === 'string') {
+        try { pH = JSON.parse(proj.headers); } catch {}
+      } else if (typeof proj.headers === 'object') {
+        pH = proj.headers;
+      }
+      Object.entries(pH).forEach(([k, v], idx) => {
+        if (!newHeaders.some(h => h.key.toLowerCase() === k.toLowerCase())) {
+          newHeaders.push({ id: `h_proj_${idx}`, key: k, value: String(v), enabled: true });
+        }
+      });
+    }
+
+    if ((rawUrl.includes('notification-service') || ep.path.includes('notification-service')) && !newHeaders.some(h => h.key.toLowerCase() === 'x-product-id')) {
+      newHeaders.push({ id: 'h_prod_id', key: 'x-product-id', value: '00000000-0000-0000-0000-000000000001', enabled: true });
+    }
+    setHeaders(newHeaders);
+
+    // Load query params
+    if (ep.queryParams && Object.keys(ep.queryParams).length > 0) {
+      setParams(Object.entries(ep.queryParams).map(([k, v], idx) => ({
+        id: `p_${idx}`,
+        key: k,
+        value: String(v),
+        enabled: true,
+      })));
+    } else {
+      setParams([]);
+    }
+
+    // Load smart assertion
+    const expected = ep.expectedStatus || (ep.method === 'POST' ? 201 : ep.method === 'DELETE' ? 204 : 200);
     setAssertions([
-      { id: `a_${Date.now()}`, type: 'status_code', expected: ep.expectedStatus || 200, operator: 'eq' },
+      { id: `a_${Date.now()}`, type: 'status_code', expected, operator: 'eq' },
       { id: `a_${Date.now() + 1}`, type: 'response_time', expected: Math.max(ep.responseTimeP95 * 2 || 1000, 500), operator: 'lt' },
     ]);
-    message.info(`Loaded endpoint "${ep.name}" configuration`);
+    message.info(`Loaded endpoint "${ep.name}" configuration with sample parameters`);
   };
 
   // Convert headers list to record
@@ -316,6 +426,9 @@ export default function TestingPage() {
       } else {
         message.error(`Request Failed: HTTP ${res.statusCode} - ${res.error || 'Server error'}`);
       }
+
+      // Immediately refresh notifications so the top navbar bell reflects live test output
+      dispatch(apiSlice.util.invalidateTags(['Notifications', 'Alerts']));
     } catch (err: any) {
       console.error('Execution error:', err);
       message.error(err.message || 'Failed to send request');
@@ -334,6 +447,7 @@ export default function TestingPage() {
         runAt: new Date().toISOString(),
         error: err.message || 'Execution failed',
       });
+      dispatch(apiSlice.util.invalidateTags(['Notifications', 'Alerts']));
     } finally {
       setRunning(false);
     }
@@ -467,11 +581,11 @@ export default function TestingPage() {
               Refresh
             </Button>
             <Button
-              className="btn-gold-gradient"
-              icon={<ThunderboltOutlined />}
+              icon={<ThunderboltOutlined style={{ color: '#f59e0b' }} />}
               onClick={handleRunAll}
               loading={runningAll}
               disabled={testCases.length === 0}
+              style={{ fontWeight: 600 }}
             >
               Run All Tests
             </Button>
@@ -495,7 +609,7 @@ export default function TestingPage() {
             title={
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontWeight: 800, fontSize: 14 }}>
-                  Test Cases <Badge count={testCases.length} style={{ backgroundColor: '#4f46e5', marginLeft: 6 }} />
+                  Test Cases <Badge count={testCases.length} style={{ backgroundColor: 'var(--color-primary)', marginLeft: 6 }} />
                 </span>
                 <Button size="small" type="text" icon={<PlusOutlined />} onClick={handleStartAdHoc}>
                   New
@@ -522,18 +636,18 @@ export default function TestingPage() {
               style={{
                 padding: '12px 16px',
                 cursor: 'pointer',
-                background: selectedCaseId === null ? '#ecfdf5' : '#f8fafc',
-                borderLeft: selectedCaseId === null ? '4px solid #10b981' : '4px solid transparent',
-                borderBottom: '1px solid #f1f5f9',
+                background: selectedCaseId === null ? 'var(--color-bg-tertiary)' : 'transparent',
+                borderLeft: selectedCaseId === null ? '4px solid var(--color-primary)' : '4px solid transparent',
+                borderBottom: '1px solid var(--color-border)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 10,
                 transition: 'all 0.15s ease',
               }}
             >
-              <ThunderboltOutlined style={{ color: '#10b981', fontSize: 18 }} />
+              <ThunderboltOutlined style={{ color: 'var(--color-text)', fontSize: 18 }} />
               <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                   Live API Playground
                 </div>
                 <div style={{ fontSize: 11, color: '#64748b' }}>
@@ -562,10 +676,10 @@ export default function TestingPage() {
                     style={{
                       padding: '12px 16px',
                       cursor: 'pointer',
-                      background: isSelected ? '#eef2ff' : 'transparent',
-                      borderLeft: isSelected ? '4px solid #4f46e5' : '4px solid transparent',
+                      background: isSelected ? 'var(--color-bg-tertiary)' : 'transparent',
+                      borderLeft: isSelected ? '4px solid var(--color-primary)' : '4px solid transparent',
                       transition: 'all 0.15s ease',
-                      borderBottom: '1px solid #f1f5f9',
+                      borderBottom: '1px solid var(--color-border)',
                     }}
                   >
                     <Space direction="vertical" size={4} style={{ width: '100%' }}>
@@ -576,7 +690,7 @@ export default function TestingPage() {
                             style={{
                               fontSize: 13,
                               fontWeight: isSelected ? 700 : 600,
-                              color: '#0f172a',
+                              color: 'var(--color-text)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -637,13 +751,13 @@ export default function TestingPage() {
             <Card className="card-modern" styles={{ body: { padding: '20px 24px' } }}>
               <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Space size={8}>
-                  <Text strong style={{ fontSize: 15, color: '#0f172a' }}>
+                  <Text strong style={{ fontSize: 15, color: 'var(--color-text)' }}>
                     {selectedCaseId ? `Test Case: ${testName}` : 'Custom Request Playground'}
                   </Text>
                   {selectedCaseId ? (
-                    <Tag color="processing" style={{ fontWeight: 700 }}>Saved Test</Tag>
+                    <Tag style={{ fontWeight: 700, borderRadius: 6, background: 'var(--color-bg-tertiary)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}>Saved Test</Tag>
                   ) : (
-                    <Tag color="cyan" style={{ fontWeight: 700 }}>Ad-Hoc Request</Tag>
+                    <Tag style={{ fontWeight: 700, borderRadius: 6, background: 'var(--color-bg-tertiary)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}>Ad-Hoc Request</Tag>
                   )}
                 </Space>
 
@@ -674,7 +788,13 @@ export default function TestingPage() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <Select
                   value={method}
-                  onChange={(val) => setMethod(val)}
+                  onChange={(val) => {
+                    setMethod(val);
+                    if (['POST', 'PUT', 'PATCH'].includes(val) && (!bodyContent || bodyType === 'none')) {
+                      setBodyType('json');
+                      setBodyContent('{\n  "status": "active"\n}');
+                    }
+                  }}
                   style={{ width: 120, fontWeight: 800 }}
                   size="large"
                 >
@@ -886,7 +1006,7 @@ export default function TestingPage() {
                         </div>
 
                         {bodyType === 'none' ? (
-                          <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: 12 }}>
+                          <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: 12 }}>
                             This request does not have a body. Select "JSON" to send a JSON payload.
                           </div>
                         ) : (
@@ -895,7 +1015,7 @@ export default function TestingPage() {
                             value={bodyContent}
                             onChange={e => setBodyContent(e.target.value)}
                             placeholder='{\n  "name": "Octocat",\n  "status": "active"\n}'
-                            style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, background: '#f8fafc' }}
+                            style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, background: 'var(--color-bg-base)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
                           />
                         )}
                       </div>
@@ -933,9 +1053,9 @@ export default function TestingPage() {
                                 alignItems: 'center',
                                 gap: 8,
                                 padding: '8px 12px',
-                                background: '#f8fafc',
+                                background: 'var(--color-bg-tertiary)',
                                 borderRadius: 8,
-                                border: '1px solid #e2e8f0',
+                                border: '1px solid var(--color-border)',
                               }}
                             >
                               <Select
@@ -999,18 +1119,26 @@ export default function TestingPage() {
                     <span style={{ fontWeight: 600 }}>Live Response</span>
                     {activeResponse && (
                       <Space size={8}>
-                        <Tag
-                          color={
+                        <span
+                          className={
                             activeResponse.statusCode < 300
-                              ? 'success'
+                              ? 'status-pill-2xx'
+                              : activeResponse.statusCode < 400
+                              ? 'status-pill-3xx'
                               : activeResponse.statusCode < 500
-                              ? 'warning'
-                              : 'error'
+                              ? 'status-pill-4xx'
+                              : 'status-pill-5xx'
                           }
-                          style={{ fontSize: 13, padding: '2px 8px', fontWeight: 700 }}
+                          style={{
+                            fontSize: 12,
+                            padding: '3px 9px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            lineHeight: 1.2,
+                          }}
                         >
-                          {activeResponse.statusCode} {activeResponse.statusText || ''}
-                        </Tag>
+                          {getFormattedStatus(activeResponse.statusCode, activeResponse.statusText)}
+                        </span>
 
                         <Tag icon={<ClockCircleOutlined />} color="default">
                           {activeResponse.responseTime} ms
@@ -1059,12 +1187,12 @@ export default function TestingPage() {
                   </div>
                 </div>
               ) : !activeResponse ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
-                  <SendOutlined style={{ fontSize: 36, marginBottom: 12, color: '#cbd5e1' }} />
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#64748b' }}>
+                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-tertiary)' }}>
+                  <SendOutlined style={{ fontSize: 36, marginBottom: 12, color: 'var(--color-text-tertiary)' }} />
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: 'var(--color-text-secondary)' }}>
                     Enter a URL and click "Send" to execute request and inspect response
                   </p>
-                  <p style={{ margin: '4px 0 0 0', fontSize: 12 }}>
+                  <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--color-text-tertiary)' }}>
                     Supports live assertions, headers inspection, and JSON formatting like Postman.
                   </p>
                 </div>
@@ -1126,7 +1254,7 @@ export default function TestingPage() {
                                     ) : (
                                       <CloseCircleOutlined style={{ color: '#ef4444', fontSize: 16 }} />
                                     )}
-                                    <span style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>
+                                    <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>
                                       {ar.message || (ar.passed ? 'Assertion passed' : 'Assertion failed')}
                                     </span>
                                   </Space>
@@ -1150,7 +1278,7 @@ export default function TestingPage() {
                           dataSource={Object.entries(activeResponse.responseHeaders || {}).map(([key, value]) => ({ key, value }))}
                           columns={[
                             { title: 'Header', dataIndex: 'key', key: 'key', width: '35%', render: (v) => <span style={{ fontFamily: 'monospace', fontWeight: 600, color: '#4338ca' }}>{v}</span> },
-                            { title: 'Value', dataIndex: 'value', key: 'value', render: (v) => <span style={{ fontFamily: 'monospace', color: '#334155' }}>{v}</span> },
+                            { title: 'Value', dataIndex: 'value', key: 'value', render: (v) => <span style={{ fontFamily: 'monospace', color: 'var(--color-text-secondary)' }}>{v}</span> },
                           ]}
                           scroll={{ y: 320 }}
                         />

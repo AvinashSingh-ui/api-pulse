@@ -82,7 +82,7 @@ export const Sidebar: React.FC = () => {
           justifyContent: isDrawer ? 'space-between' : 'flex-start',
           padding: isCollapsedMode ? '0 16px' : '0 20px',
           gap: 12,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           flexShrink: 0,
         }}>
           <div
@@ -93,18 +93,17 @@ export const Sidebar: React.FC = () => {
               width: 36,
               height: 36,
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              background: '#18181b',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: 14,
-              fontWeight: 800,
               color: '#ffffff',
               flexShrink: 0,
-              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.45)',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.5)',
               position: 'relative',
             }}>
-              AP
+              <ApiOutlined style={{ fontSize: 18, color: '#f4f4f5' }} />
               <span
                 className="live-dot-pulse"
                 style={{
@@ -119,8 +118,8 @@ export const Sidebar: React.FC = () => {
             {(!isCollapsedMode || isDrawer) && (
               <div>
                 <div style={{
-                  color: '#ffffff',
-                  fontWeight: 800,
+                  color: '#f4f4f5',
+                  fontWeight: 700,
                   fontSize: 15,
                   lineHeight: 1.2,
                   letterSpacing: '-0.02em',
@@ -128,7 +127,7 @@ export const Sidebar: React.FC = () => {
                   API Pulse
                 </div>
                 <div style={{
-                  color: '#64748b',
+                  color: '#71717a',
                   fontSize: 9,
                   fontWeight: 700,
                   letterSpacing: '0.12em',
@@ -166,27 +165,27 @@ export const Sidebar: React.FC = () => {
                   borderRadius: 10,
                   cursor: 'pointer',
                   background: isActive
-                    ? 'linear-gradient(90deg, rgba(79, 70, 229, 0.22) 0%, rgba(99, 102, 241, 0.08) 100%)'
+                    ? 'rgba(255, 255, 255, 0.08)'
                     : 'transparent',
-                  color: isActive ? '#ffffff' : '#94a3b8',
+                  color: isActive ? '#f4f4f5' : '#a1a1aa',
                   fontSize: 14,
-                  fontWeight: isActive ? 700 : 500,
+                  fontWeight: isActive ? 600 : 500,
                   transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
                   justifyContent: isCollapsedMode ? 'center' : 'flex-start',
                   position: 'relative',
-                  border: isActive ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
-                  boxShadow: isActive ? 'inset 3px 0 0 #6366f1' : 'none',
+                  border: isActive ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
+                  boxShadow: 'none',
                 }}
                 onMouseEnter={e => {
                   if (!isActive) {
-                    (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.05)';
-                    (e.currentTarget as HTMLElement).style.color = '#ffffff';
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.04)';
+                    (e.currentTarget as HTMLElement).style.color = '#f4f4f5';
                   }
                 }}
                 onMouseLeave={e => {
                   if (!isActive) {
                     (e.currentTarget as HTMLElement).style.background = 'transparent';
-                    (e.currentTarget as HTMLElement).style.color = '#94a3b8';
+                    (e.currentTarget as HTMLElement).style.color = '#a1a1aa';
                   }
                 }}
               >
@@ -226,23 +225,24 @@ export const Sidebar: React.FC = () => {
                   marginBottom: 4,
                   borderRadius: 10,
                   cursor: 'pointer',
-                  background: isActive ? 'rgba(79, 70, 229, 0.22)' : 'transparent',
-                  color: isActive ? '#ffffff' : '#94a3b8',
+                  background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'transparent',
+                  color: isActive ? '#f4f4f5' : '#a1a1aa',
                   fontSize: 14,
-                  fontWeight: isActive ? 700 : 500,
+                  fontWeight: isActive ? 600 : 500,
                   justifyContent: isCollapsedMode ? 'center' : 'flex-start',
                   transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
+                  border: isActive ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid transparent',
                 }}
                 onMouseEnter={e => {
                   if (!isActive) {
-                    (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.05)';
-                    (e.currentTarget as HTMLElement).style.color = '#ffffff';
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.04)';
+                    (e.currentTarget as HTMLElement).style.color = '#f4f4f5';
                   }
                 }}
                 onMouseLeave={e => {
                   if (!isActive) {
                     (e.currentTarget as HTMLElement).style.background = 'transparent';
-                    (e.currentTarget as HTMLElement).style.color = '#94a3b8';
+                    (e.currentTarget as HTMLElement).style.color = '#a1a1aa';
                   }
                 }}
               >
@@ -263,18 +263,18 @@ export const Sidebar: React.FC = () => {
                 padding: isCollapsedMode ? '10px 0' : '10px 14px',
                 borderRadius: 10,
                 cursor: 'pointer',
-                color: '#64748b',
+                color: '#a1a1aa',
                 fontSize: 14,
                 fontWeight: 500,
                 justifyContent: isCollapsedMode ? 'center' : 'flex-start',
                 transition: 'all 0.18s cubic-bezier(0.4, 0, 0.2, 1)',
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.color = '#ffffff';
+                (e.currentTarget as HTMLElement).style.color = '#f4f4f5';
                 (e.currentTarget as HTMLElement).style.background = 'rgba(255, 255, 255, 0.04)';
               }}
               onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.color = '#64748b';
+                (e.currentTarget as HTMLElement).style.color = '#a1a1aa';
                 (e.currentTarget as HTMLElement).style.background = 'transparent';
               }}
             >

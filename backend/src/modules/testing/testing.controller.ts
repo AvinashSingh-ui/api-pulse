@@ -4,11 +4,29 @@ import axios from 'axios';
 import { db } from '../../db/store.js';
 import { healthService } from '../monitoring/health.service.js';
 import { config } from '../../config/index.js';
+import { notificationService } from '../notifications/notification.service.js';
 import type { TestCase, TestResult, TestStatus } from '../../types/index.js';
 
 function resolveTargetUrl(url: string, endpointId?: string): string {
   let target = (url || '').trim();
   if (!target) return target;
+
+  // Resolve template path parameters in URL e.g. /users/{id} -> /users/1
+  target = target.replace(/\{([a-zA-Z0-9_-]+)\}|:([a-zA-Z0-9_-]+)/g, (_match, p1, p2) => {
+    const key = (p1 || p2 || '').toLowerCase();
+    if (key.includes('country') || key.includes('countries')) return 'US';
+    if (key.includes('provideraccount')) return 'acc_1';
+    if (key.includes('provider')) return 'custom';
+    if (key.includes('entity') || key.includes('type')) return 'customer';
+    if (key.includes('account') || key.includes('contact') || key.includes('lead') || key.includes('process')) return '1';
+    if (key.includes('uuid') || key.includes('id')) return '00000000-0000-0000-0000-000000000001';
+    if (key.includes('num') || key.includes('count') || key.includes('page') || key.includes('limit')) return '1';
+    if (key.includes('token') || key.includes('jwt') || key.includes('hash')) return 'test_token';
+    if (key.includes('name') || key.includes('slug') || key.includes('item')) return 'sample_item';
+    if (key.includes('email')) return 'test%40example.com';
+    if (key.includes('date')) return '2026-01-01';
+    return '1';
+  });
 
   if (target.startsWith('http://') || target.startsWith('https://')) {
     return target;
@@ -52,6 +70,14 @@ function resolveTargetUrl(url: string, endpointId?: string): string {
   return `http://localhost:${config.port}/${target}`;
 }
 
+const HTTP_STATUS_PHRASES: Record<number, string> = {
+  200: 'OK', 201: 'Created', 202: 'Accepted', 204: 'No Content',
+  301: 'Moved Permanently', 302: 'Found', 304: 'Not Modified',
+  400: 'Bad Request', 401: 'Unauthorized', 403: 'Forbidden', 404: 'Not Found',
+  405: 'Method Not Allowed', 408: 'Request Timeout', 409: 'Conflict', 422: 'Unprocessable Entity', 429: 'Too Many Requests',
+  500: 'Internal Server Error', 502: 'Bad Gateway', 503: 'Service Unavailable', 504: 'Gateway Timeout',
+};
+
 async function executeTestCase(testCase: TestCase): Promise<TestResult> {
   const startTime = Date.now();
   let statusCode = 200;
@@ -65,23 +91,58 @@ async function executeTestCase(testCase: TestCase): Promise<TestResult> {
   const resolvedUrl = resolveTargetUrl(testCase.url, testCase.endpointId);
 
   try {
+    const requestHeaders: Record<string, string> = {
+      'Accept': 'application/json, text/plain, */*',
+      'User-Agent': 'API-Pulse-Test-Runner/1.0',
+      ...(testCase.headers || {}),
+    };
+
+    if (!requestHeaders['x-product-id'] && resolvedUrl.includes('notification-service')) {
+      requestHeaders['x-product-id'] = '00000000-0000-0000-0000-000000000001';
+    }
+
+    const methodUpper = (testCase.method || 'GET').toUpperCase();
+    const isBodyMethod = methodUpper === 'POST' || methodUpper === 'PUT' || methodUpper === 'PATCH';
+
+    let parsedBody: any = undefined;
+    if (testCase.body !== undefined && testCase.body !== null && testCase.body !== '') {
+      if (typeof testCase.body === 'string') {
+        const trimmed = testCase.body.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+          try {
+            parsedBody = JSON.parse(trimmed);
+            if (!requestHeaders['Content-Type']) {
+              requestHeaders['Content-Type'] = 'application/json';
+            }
+          } catch {
+            parsedBody = isBodyMethod ? { status: 'active', message: trimmed } : trimmed;
+          }
+        } else {
+          parsedBody = isBodyMethod ? { status: 'active', value: trimmed } : trimmed;
+        }
+      } else {
+        parsedBody = testCase.body;
+      }
+    } else if (isBodyMethod) {
+      parsedBody = { status: 'active' };
+      if (!requestHeaders['Content-Type']) {
+        requestHeaders['Content-Type'] = 'application/json';
+      }
+    }
+
     const res = await axios({
       method: testCase.method.toLowerCase(),
       url: resolvedUrl,
-      headers: testCase.headers || {},
-      data: testCase.body
-        ? (typeof testCase.body === 'string'
-            ? (testCase.body.trim().startsWith('{') || testCase.body.trim().startsWith('[')
-                ? JSON.parse(testCase.body)
-                : testCase.body)
-            : testCase.body)
-        : undefined,
+      headers: requestHeaders,
+      data: parsedBody,
       timeout: 10000,
       validateStatus: () => true, // Capture all HTTP statuses like Postman
     });
     responseTime = Date.now() - startTime;
     statusCode = res.status;
-    statusText = res.statusText || (res.status === 200 ? 'OK' : String(res.status));
+    statusText = (res.statusText && res.statusText.trim() !== String(res.status))
+      ? res.statusText
+      : (HTTP_STATUS_PHRASES[res.status] || (res.status === 200 ? 'OK' : ''));
     responseBody = typeof res.data === 'string' ? res.data : JSON.stringify(res.data, null, 2);
 
     if (res.headers && typeof res.headers === 'object') {
@@ -96,7 +157,9 @@ async function executeTestCase(testCase: TestCase): Promise<TestResult> {
   } catch (err: any) {
     responseTime = Date.now() - startTime;
     statusCode = err.response?.status || 500;
-    statusText = err.response?.statusText || 'Execution Error';
+    statusText = (err.response?.statusText && err.response?.statusText.trim() !== String(statusCode))
+      ? err.response.statusText
+      : (HTTP_STATUS_PHRASES[statusCode] || 'Execution Error');
     error = err.message || 'Request execution failed';
     responseBody = JSON.stringify({ error, message: err.message }, null, 2);
     sizeBytes = Buffer.byteLength(responseBody, 'utf-8');
@@ -251,6 +314,26 @@ export const testingController = {
     if (db.testResults.length > 200) db.testResults.pop();
     db.save();
 
+    // Emit live test notification
+    try {
+      const isPass = testResult.status === 'passed';
+      notificationService.createNotification({
+        projectId: testCase.endpointId ? db.endpoints.find(e => e.id === testCase.endpointId)?.projectId : undefined,
+        endpointId: testCase.endpointId,
+        title: isPass ? `Test Passed: ${testCase.name}` : `Test ${testResult.status === 'failed' ? 'Failed' : 'Error'}: ${testCase.name}`,
+        message: isPass
+          ? `Status HTTP ${testResult.statusCode} in ${testResult.responseTime}ms. All assertions passed.`
+          : `Status HTTP ${testResult.statusCode} in ${testResult.responseTime}ms. ${testResult.error || 'Assertion verification failed.'}`,
+        severity: isPass ? 'info' : testResult.status === 'error' ? 'critical' : 'warning',
+        type: isPass ? 'system' : 'unhealthy',
+        metadata: {
+          statusCode: testResult.statusCode,
+          responseTime: testResult.responseTime,
+        },
+        forceNotify: true,
+      });
+    } catch {}
+
     return res.json(testResult);
   },
 
@@ -290,6 +373,25 @@ export const testingController = {
     };
 
     const testResult = await executeTestCase(tempCase);
+
+    // Emit live test notification
+    try {
+      const isPass = testResult.status === 'passed';
+      notificationService.createNotification({
+        title: isPass ? `Live Test Succeeded: ${tempCase.method} ${finalUrl.slice(0, 45)}` : `Live Test ${testResult.status === 'failed' ? 'Failed' : 'Error'}: ${tempCase.method} ${finalUrl.slice(0, 45)}`,
+        message: isPass
+          ? `HTTP ${testResult.statusCode} in ${testResult.responseTime}ms. Verified successfully.`
+          : `HTTP ${testResult.statusCode} in ${testResult.responseTime}ms. ${testResult.error || 'Assertions check failed.'}`,
+        severity: isPass ? 'info' : testResult.status === 'error' ? 'critical' : 'warning',
+        type: isPass ? 'system' : 'unhealthy',
+        metadata: {
+          statusCode: testResult.statusCode,
+          responseTime: testResult.responseTime,
+        },
+        forceNotify: true,
+      });
+    } catch {}
+
     return res.json(testResult);
   },
 

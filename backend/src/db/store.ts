@@ -41,6 +41,14 @@ class DatabaseStore {
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
           const projects: Project[] = Array.isArray(parsed.projects) ? parsed.projects : [];
+          projects.forEach(p => {
+            if (p.id === 'p_dc447e41' || p.baseUrl?.includes('notification-service')) {
+              if (!p.headers) p.headers = {};
+              if (typeof p.headers === 'object' && !p.headers['x-product-id']) {
+                p.headers['x-product-id'] = '00000000-0000-0000-0000-000000000001';
+              }
+            }
+          });
           const projectIds = new Set(projects.map((p: Project) => p.id));
           const endpoints: Endpoint[] = Array.isArray(parsed.endpoints)
             ? parsed.endpoints.filter((e: Endpoint) => projectIds.has(e.projectId))

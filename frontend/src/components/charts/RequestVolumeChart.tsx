@@ -7,6 +7,7 @@ import { Card, Select, Empty } from 'antd';
 import dayjs from 'dayjs';
 import type { MetricPoint } from '@/types';
 import { formatNumber } from '@/utils';
+import { useTheme } from '@/hooks/useTheme';
 
 interface RequestVolumeChartProps {
   data: MetricPoint[];
@@ -16,12 +17,21 @@ interface RequestVolumeChartProps {
   height?: number;
 }
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
+const CustomTooltip = ({ active, payload, label, isDark }: { active?: boolean; payload?: Array<{ value: number }>; label?: string; isDark?: boolean }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: '8px 12px', fontSize: 12 }}>
-      <p style={{ color: '#64748b', margin: '0 0 4px' }}>{label}</p>
-      <p style={{ color: '#0f172a', fontWeight: 600, margin: 0 }}>{formatNumber(payload[0].value)} req</p>
+    <div style={{
+      background: isDark ? '#18181b' : '#ffffff',
+      border: `1px solid ${isDark ? '#27272a' : '#e2e8f0'}`,
+      borderRadius: 8,
+      padding: '8px 12px',
+      boxShadow: isDark ? '0 4px 14px rgba(0,0,0,0.5)' : '0 4px 6px rgba(0,0,0,0.07)',
+      fontSize: 12,
+    }}>
+      <p style={{ color: isDark ? '#a1a1aa' : '#64748b', margin: '0 0 4px', fontSize: 11, fontWeight: 500 }}>{label}</p>
+      <p style={{ color: isDark ? '#f4f4f5' : '#09090b', fontWeight: 700, margin: 0, fontSize: 13 }}>
+        {formatNumber(payload[0].value)} req
+      </p>
     </div>
   );
 };
@@ -29,15 +39,21 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 export const RequestVolumeChart: React.FC<RequestVolumeChartProps> = ({
   data, loading = false, onIntervalChange, interval = '1h', height = 240,
 }) => {
+  const { isDark } = useTheme();
   const formatted = data.map(d => ({
     time: dayjs(d.timestamp).format('HH:mm'),
     value: Math.round(d.value),
   }));
 
+  const barColor = isDark ? '#71717a' : '#27272a';
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.07)' : 'rgba(0, 0, 0, 0.06)';
+  const tickColor = isDark ? '#a1a1aa' : '#71717a';
+
   return (
     <Card
       title="Request Volume"
       loading={loading}
+      className="card-modern"
       extra={onIntervalChange && (
         <Select size="small" value={interval} onChange={onIntervalChange} style={{ width: 80 }}
           options={[
@@ -55,11 +71,11 @@ export const RequestVolumeChart: React.FC<RequestVolumeChartProps> = ({
       ) : (
         <ResponsiveContainer width="100%" height={height}>
           <BarChart data={formatted} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-            <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="value" fill="#4f8ef7" radius={[3, 3, 0, 0]} maxBarSize={32} />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
+            <XAxis dataKey="time" tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: tickColor }} axisLine={false} tickLine={false} />
+            <Tooltip content={<CustomTooltip isDark={isDark} />} />
+            <Bar dataKey="value" fill={barColor} radius={[4, 4, 0, 0]} maxBarSize={32} />
           </BarChart>
         </ResponsiveContainer>
       )}

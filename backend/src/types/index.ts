@@ -27,6 +27,10 @@ export interface Project {
   tags: string[];
   userId?: string;
   deletedAt?: string | null;
+  bearerToken?: string;
+  apiKey?: string;
+  apiKeyHeader?: string;
+  headers?: Record<string, string>;
 }
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
@@ -45,9 +49,14 @@ export interface Endpoint {
   latencyThresholdMs?: number; // default 500
   interval: number; // in seconds, e.g. 15, 30, 60, 300
   expectedStatus: number; // default 200
+  expectedStatuses?: number[]; // list of accepted status codes (e.g. [200, 201, 204])
   timeout: number; // in ms, default 5000
   headers?: Record<string, string>;
   body?: string;
+  contentType?: string; // application/json, application/x-www-form-urlencoded, etc.
+  pathParams?: Record<string, string>;
+  queryParams?: Record<string, string>;
+  bodySchema?: any;
   captureBodies?: boolean;
   responseTimeP50: number;
   responseTimeP95: number;
@@ -88,7 +97,7 @@ export interface UptimeRecord {
   incidents: number;
 }
 
-export type FailureType = 'timeout' | 'connection_refused' | 'unexpected_status' | 'schema_mismatch' | 'network_error' | 'none';
+export type FailureType = 'timeout' | 'connection_refused' | 'unexpected_status' | 'schema_mismatch' | 'network_error' | 'auth_failure' | 'client_error' | 'server_error' | 'none';
 
 export interface RequestLog {
   id: string;

@@ -30,16 +30,16 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         items={[
           {
             title: (
-              <Link to="/" style={{ color: '#64748b', display: 'inline-flex', alignItems: 'center' }}>
+              <Link to="/" style={{ color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center' }}>
                 <HomeOutlined style={{ fontSize: 13 }} />
               </Link>
             ),
           },
           ...breadcrumbs.map((b) => ({
             title: b.path ? (
-              <Link to={b.path} style={{ color: '#64748b' }}>{b.label}</Link>
+              <Link to={b.path} style={{ color: 'var(--color-text-secondary)' }}>{b.label}</Link>
             ) : (
-              <span style={{ color: '#0f172a', fontWeight: 600 }}>{b.label}</span>
+              <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{b.label}</span>
             ),
           })),
         ]}
@@ -59,7 +59,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
           style={{
             fontSize: 24,
             fontWeight: 800,
-            color: '#0f172a',
+            color: 'var(--color-text)',
             margin: 0,
             lineHeight: 1.25,
             letterSpacing: '-0.025em',
@@ -70,7 +70,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         {subtitle && (
           <p
             style={{
-              color: '#64748b',
+              color: 'var(--color-text-secondary)',
               marginTop: 4,
               marginBottom: 0,
               fontSize: 13,

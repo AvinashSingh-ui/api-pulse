@@ -41,8 +41,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         image={image ?? Empty.PRESENTED_IMAGE_SIMPLE}
         description={
           <div>
-            <p style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginBottom: 4 }}>{title}</p>
-            <p style={{ fontSize: 13, color: '#94a3b8' }}>{description}</p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>{title}</p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>{description}</p>
           </div>
         }
       >

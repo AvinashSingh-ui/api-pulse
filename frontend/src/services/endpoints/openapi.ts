@@ -30,6 +30,9 @@ export interface ImportApplyPayload {
     environment?: 'production' | 'staging' | 'development';
     description?: string;
     tags?: string[];
+    bearerToken?: string;
+    apiKey?: string;
+    headers?: Record<string, string>;
   };
 }
 

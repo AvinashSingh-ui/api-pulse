@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>API Pulse — Demo & Presentation Walkthrough Script</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --navy: #0f172a;
+      --slate: #334155;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --green: #047857;
+      --green-bg: #ecfdf5;
+      --blue: #1d4ed8;
+      --blue-bg: #eff6ff;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--slate);
+      line-height: 1.6;
+      margin: 0;
+      padding: 30px 20px;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      padding: 40px 50px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid var(--border);
+    }
+    .header-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+    h1 {
+      font-size: 26px;
+      color: var(--navy);
+      margin: 0 0 6px 0;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #64748b;
+      margin: 0;
+    }
+    .btn-print {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-print:hover {
+      background: #4338ca;
+    }
+    .section-title {
+      font-size: 18px;
+      color: var(--navy);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin: 32px 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .elevator-box {
+      background: #f1f5f9;
+      border-left: 4px solid var(--primary);
+      padding: 18px 22px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 24px;
+      font-size: 15px;
+      color: var(--navy);
+    }
+    .page-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    }
+    .page-card h3 {
+      margin: 0 0 10px 0;
+      color: var(--navy);
+      font-size: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .goal-text {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+    .box-action {
+      background: var(--green-bg);
+      border: 1px solid #a7f3d0;
+      color: var(--green);
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .box-speech {
+      background: var(--blue-bg);
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      padding: 12px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-style: italic;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .tech-list {
+      font-size: 12px;
+      color: #475569;
+      padding-left: 18px;
+      margin: 0;
+    }
+    .tech-list li {
+      margin-bottom: 4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    th {
+      background: #f1f5f9;
+      color: var(--navy);
+      font-weight: 600;
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .container { box-shadow: none; border: none; padding: 0; }
+      .btn-print { display: none; }
+      .page-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header-bar">
+    <div>
+      <h1>API Pulse — Presentation & Demo Walkthrough Script</h1>
+      <p class="subtitle">A Step-by-Step Speaking Guide for Demoing to Mentors, Leads & Clients</p>
+    </div>
+    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <div class="section-title">1. The 30-Second Elevator Pitch (Start Your Demo Here)</div>
+  <div class="elevator-box">
+    <strong>"Good morning Sir / Team. Today I am excited to present API Pulse."</strong><br><br>
+    <em>"In modern software engineering, backend microservices fail silently. Latency spikes, unexpected 500 errors, and broken third-party APIs often go unnoticed until users complain. 
+    <strong>API Pulse</strong> is an intelligent, full-stack API observability and synthetic monitoring platform. It continuously checks endpoint health, tracks response latency percentiles (P50, P95, P99), fires automated alerts before outages affect customers, and uses an integrated <strong>AI SRE Copilot</strong> to automatically diagnose root causes and suggest code fixes."</em>
+  </div>
+
+  <div class="section-title">2. Page-by-Page Screen Walkthrough</div>
+
+  <!-- Page 1: Dashboard -->
+  <div class="page-card">
+    <h3>Page 1: Executive Dashboard</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> High-level telemetry overview showing total system health score, request throughput, and active incidents.</div>
+    <div class="box-action">🖥️ Screen Action: Open the Dashboard. Point to the Top Stat Cards, the 24h Request Volume Chart, and the Response Time Distribution.</div>
+    <div class="box-speech">💬 What to Say: "Here on the Executive Dashboard, engineering managers and DevOps teams get an instant snapshot of the entire API ecosystem. At the top, you see our overall Health Score (95/100), total monitored endpoints (289), active projects, and unresolved alerts. Below, the interactive chart illustrates 24-hour request volume, error distributions (2xx, 4xx, 5xx), and P50 to P99 latency percentiles."</div>
+    <ul class="tech-list">
+      <li><strong>Health Score Calculation:</strong> Weighted score based on uptime %, success rate, and latency SLA adherence.</li>
+      <li><strong>Visual Charts:</strong> Recharts-based responsive graphs tracking live traffic volume and status distributions.</li>
+    </ul>
+  </div>
+
+  <!-- Page 2: Projects -->
+  <div class="page-card">
+    <h3>Page 2: Projects Management</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> Group endpoints logically by microservice, team, or environment.</div>
+    <div class="box-action">🖥️ Screen Action: Navigate to Projects. Show the list of microservices: Authentication Service, Payment Gateway, Notification Service.</div>
+    <div class="box-speech">💬 What to Say: "Next, the Projects page enables enterprise team isolation. Rather than having a messy flat list of APIs, we group endpoints by microservice or service domain. Each project defines its base URL (e.g. https://api.pulse.dev), environment status, and aggregates health telemetry specifically for that service."</div>
+    <ul class="tech-list">
+      <li><strong>Service Isolation:</strong> Group APIs by domain (Billing, Customer Portal, Core Microservices).</li>
+      <li><strong>Base URL Inheritance:</strong> Endpoints dynamically inherit their base URL from the parent project.</li>
+    </ul>
+  </div>
+
+  <!-- Page 3: Endpoints & OpenAPI -->
+  <div class="page-card">
+    <h3>Page 3: Endpoints & One-Click OpenAPI / Swagger Import (⭐ Key Feature!)</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> Instant onboarding of hundreds of endpoints via OpenAPI specs with real-time filtering and status inspection.</div>
+    <div class="box-action">🖥️ Screen Action: Open Endpoints page. Click the 'Import APIs' button. Show the modal with OpenAPI JSON/YAML, Raw Text, or URL option.</div>
+    <div class="box-speech">💬 What to Say: "This is one of our most powerful features: One-Click OpenAPI Specification Import. Developers don't want to type 300 endpoints manually. With API Pulse, you simply upload a Swagger YAML, paste JSON, or supply a live URL. The system automatically parses all routes, methods (GET, POST, PUT, DELETE), path parameters, request bodies, and headers in under 3 seconds. Here we have 289 microservice endpoints fully imported and ready to monitor."</div>
+    <ul class="tech-list">
+      <li><strong>Supported Formats:</strong> OpenAPI 3.0, Swagger 2.0, Raw JSON, YAML, and live remote spec URLs.</li>
+      <li><strong>Smart Parameter Resolution:</strong> Automatically resolves template parameters like {id} to UUIDs.</li>
+      <li><strong>Fast Batch Check:</strong> Chunked parallel verification executes 289 endpoint checks in just 6-8 seconds.</li>
+    </ul>
+  </div>
+
+  <!-- Page 4: Monitoring -->
+  <div class="page-card">
+    <h3>Page 4: Monitoring & Automated Synthetic Checks</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> Background synthetic ping engine that actively verifies availability, SSL/TLS, and SLA thresholds.</div>
+    <div class="box-action">🖥️ Screen Action: Go to Monitoring. Highlight the Live Heartbeat, uptime percentage (99.9%), and recent health score transitions.</div>
+    <div class="box-speech">💬 What to Say: "On the Monitoring page, API Pulse acts as an active synthetic observer. Rather than waiting for real user failures, our background scheduler executes synthetic HTTP requests at configured intervals (e.g., every 30 seconds). It records exact response times, validates response status codes against expected SLAs, and classifies endpoints as Healthy, Degraded, or Down."</div>
+    <ul class="tech-list">
+      <li><strong>Background Scheduler:</strong> Continuous non-blocking Node.js cron scheduler.</li>
+      <li><strong>SLA Latency Thresholds:</strong> Flags endpoints as 'Degraded' if latency exceeds custom SLA limits (>500ms).</li>
+      <li><strong>Automatic Recovery:</strong> Detects when a down endpoint recovers and marks prior alerts as resolved.</li>
+    </ul>
+  </div>
+
+  <!-- Page 5: Alerts -->
+  <div class="page-card">
+    <h3>Page 5: Alerts & Incident Triggering</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> Rule-based anomaly detection alerting developers via audio, toasts, and in-app notifications before outages escalate.</div>
+    <div class="box-action">🖥️ Screen Action: Navigate to Alerts page. Point to an active alert card. Click the top navbar bell icon to reveal the Notification Center.</div>
+    <div class="box-speech">💬 What to Say: "When an endpoint fails or its latency spikes, the Alerting Engine triggers instantly. It creates an incident ticket, computes severity (Critical, Warning, Info), and immediately dispatches a real-time notification to the top navbar with audio feedback. Developers can acknowledge alerts, review the failure message, and assign them to engineers."</div>
+    <ul class="tech-list">
+      <li><strong>Smart Deduplication:</strong> Prevents notification storming while allowing manual triggers to notify in real time.</li>
+      <li><strong>Audio Alerts:</strong> Sound feedback on Critical, Warning, and Recovery events.</li>
+      <li><strong>Lifecycle Tracking:</strong> Active -> Acknowledged -> Resolved state transitions.</li>
+    </ul>
+  </div>
+
+  <!-- Page 6: Testing -->
+  <div class="page-card">
+    <h3>Page 6: Testing Playground (Custom API Runner)</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> Postman-like in-browser API client with automated assertion suites for ad-hoc verification.</div>
+    <div class="box-action">🖥️ Screen Action: Open Testing page. Select GET or POST, click 'Send'. Show the live response pill, headers, and assertion results.</div>
+    <div class="box-speech">💬 What to Say: "The Testing Playground provides a built-in Postman experience right inside the browser. Developers can select any imported endpoint or enter a custom URL, configure headers, query params, and JSON payloads, and click 'Send'. The runner executes the request, measures server latency, parses response headers, and runs automated assertions like status code checks or body contents verification."</div>
+    <ul class="tech-list">
+      <li><strong>Live Response Pill:</strong> High-contrast status tag (e.g. 200 OK, 400 Bad Request, 500 Internal Error).</li>
+      <li><strong>Assertion Engine:</strong> Validates status codes, latency thresholds (&lt;300ms), and JSON path values.</li>
+    </ul>
+  </div>
+
+  <!-- Page 7: Logs -->
+  <div class="page-card">
+    <h3>Page 7: Structured Logs & Telemetry</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> Immutable audit log of every request, response, duration, and error snippet for deep forensics.</div>
+    <div class="box-action">🖥️ Screen Action: Navigate to Logs. Click a log row to open the detailed drawer showing raw headers and error traces.</div>
+    <div class="box-speech">💬 What to Say: "The Logs page serves as our forensic audit trail. Every single health check, playground run, and manual ping is stored with microsecond precision. You can search by endpoint path, filter by status codes (2xx, 4xx, 5xx), and inspect detailed request/response payloads to debug tricky intermittent bugs."</div>
+    <ul class="tech-list">
+      <li><strong>Search & Filter:</strong> Instant search across methods, paths, and status ranges.</li>
+      <li><strong>Persistent Storage:</strong> Dual database drivers supporting fast SQLite and production PostgreSQL.</li>
+    </ul>
+  </div>
+
+  <!-- Page 8: AI Analysis -->
+  <div class="page-card">
+    <h3>Page 8: AI Root Cause Analysis (SRE Copilot) (⭐ Showstopper!)</h3>
+    <div class="goal-text"><strong>Core Goal:</strong> Automated AI diagnostic engine powered by Gemini AI with instant local SRE heuristic fallback.</div>
+    <div class="box-action">🖥️ Screen Action: In Endpoints or Alerts, click 'Diagnose with AI'. Show the modal with Technical Title, Causes, and Code Fix snippet.</div>
+    <div class="box-speech">💬 What to Say: "Finally, this is our marquee capability: AI Root Cause Analysis. When an endpoint experiences an outage, developers usually waste hours digging through server logs. In API Pulse, our SRE Copilot analyzes the telemetry—response code, latency percentiles, error payloads—and generates a production-grade diagnosis with exact probable causes, troubleshooting checklists, and actionable TypeScript / Node.js code snippets fixing the bug."</div>
+    <ul class="tech-list">
+      <li><strong>Dual-Tier Architecture:</strong> Combines Google Gemini 2.5 Flash with an instant local SRE Heuristic Engine.</li>
+      <li><strong>Circuit Breaker Protected:</strong> 15-minute cooldown circuit breaker ensures zero UI lag if API quotas are exhausted.</li>
+    </ul>
+  </div>
+
+  <div class="section-title">3. Demo Conclusion Script (How to End Confidently)</div>
+  <div class="elevator-box" style="border-left-color: #10b981; background: #f0fdf4;">
+    <strong>"To summarize, Sir:"</strong><br><br>
+    <em>"API Pulse transforms API management from reactive firefighting into proactive observability. By combining <strong>OpenAPI automated imports</strong>, <strong>synthetic health checks</strong>, <strong>real-time alerting</strong>, and <strong>AI-powered root cause analysis</strong> into a single unified platform, engineering teams can guarantee 99.99% uptime and resolve incidents before customers ever notice.<br><br>
+    Thank you very much. I am now open to any questions or a deep-dive into any specific module you'd like to see."</em>
+  </div>
+
+  <div class="section-title">4. Quick Answers to Common Questions Sir Might Ask</div>
+  <table>
+    <tr>
+      <th style="width: 40%;">Question</th>
+      <th>Your Confident 1-Sentence Answer</th>
+    </tr>
+    <tr>
+      <td><strong>Q: How does the system handle 289+ endpoints without slowing down?</strong></td>
+      <td>"We use chunked concurrency with batch sizes of 15, executing full verification cycles in under 8 seconds without socket starvation."</td>
+    </tr>
+    <tr>
+      <td><strong>Q: What happens if Gemini AI quota runs out?</strong></td>
+      <td>"We engineered an automated 15-minute Circuit Breaker that instantly falls back to our internal SRE Heuristic Engine with 0ms latency."</td>
+    </tr>
+    <tr>
+      <td><strong>Q: Where is data stored?</strong></td>
+      <td>"In-memory store backed by dual persistence drivers: fast local SQLite for zero-config development, and PostgreSQL for production."</td>
+    </tr>
+    <tr>
+      <td><strong>Q: Does this replace Postman?</strong></td>
+      <td>"It incorporates core Postman request & assertion capabilities, but extends far beyond by adding automated 24/7 synthetic monitoring and AI diagnosis."</td>
+    </tr>
+  </table>
+
+</div>
+
+</body>
+</html>

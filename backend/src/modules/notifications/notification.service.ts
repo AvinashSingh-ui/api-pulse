@@ -16,22 +16,22 @@ export const notificationService = {
     severity: NotificationSeverity;
     type: NotificationType;
     metadata?: AppNotification['metadata'];
+    forceNotify?: boolean;
   }): AppNotification | null {
-    const { projectId, endpointId, title, message, severity, type, metadata = {} } = params;
+    const { projectId, endpointId, title, message, severity, type, metadata = {}, forceNotify = false } = params;
 
     // Look up project and endpoint details for context
     const project = projectId ? db.projects.find(p => p.id === projectId) : (endpointId ? db.projects.find(p => p.id === db.endpoints.find(e => e.id === endpointId)?.projectId) : undefined);
     const endpoint = endpointId ? db.endpoints.find(e => e.id === endpointId) : undefined;
 
-    // Deduplication rule for ongoing incidents:
-    // If there is an active unread notification of the same type for this endpoint created recently (last 15 mins), do not duplicate!
-    if (endpointId && (type === 'degraded' || type === 'unhealthy' || type === 'latency_spike')) {
-      const fifteenMinsAgo = Date.now() - 15 * 60 * 1000;
+    // Deduplication rule for ongoing background incidents (bypassed if forceNotify is true):
+    if (!forceNotify && endpointId && (type === 'degraded' || type === 'unhealthy' || type === 'latency_spike')) {
+      const tenMinsAgo = Date.now() - 10 * 60 * 1000;
       const existing = db.notifications.find(
         n => n.endpointId === endpointId &&
              n.type === type &&
              !n.isRead &&
-             new Date(n.createdAt).getTime() > fifteenMinsAgo
+             new Date(n.createdAt).getTime() > tenMinsAgo
       );
       if (existing) {
         return null;
@@ -122,12 +122,18 @@ export const notificationService = {
     healthScore: number;
     degradationReason?: string;
     failureType?: string;
+    forceNotify?: boolean;
   }): AppNotification | null {
-    const { endpoint, prevStatus, newStatus, statusCode, responseTime, healthScore, degradationReason, failureType } = params;
+    const { endpoint, prevStatus, newStatus, statusCode, responseTime, healthScore, degradationReason, failureType, forceNotify = false } = params;
 
-    // Ongoing incident deduplication: don't create repeat alerts if status hasn't changed
-    if (prevStatus === newStatus) {
-      return null;
+    // Ongoing incident deduplication: don't create repeat alerts if status hasn't changed UNLESS forceNotify is true or no recent unread notification exists
+    if (!forceNotify && prevStatus === newStatus) {
+      const hasRecentUnread = db.notifications.some(
+        n => n.endpointId === endpoint.id && !n.isRead && (Date.now() - new Date(n.createdAt).getTime() < 10 * 60 * 1000)
+      );
+      if (hasRecentUnread) {
+        return null;
+      }
     }
 
     const metadata = {

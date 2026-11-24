@@ -119,6 +119,10 @@ export const projectsController = {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       tags,
+      bearerToken: req.body.bearerToken?.trim() || undefined,
+      apiKey: req.body.apiKey?.trim() || undefined,
+      apiKeyHeader: req.body.apiKeyHeader?.trim() || undefined,
+      headers: req.body.headers || undefined,
     };
 
     // Save to real SQLite database

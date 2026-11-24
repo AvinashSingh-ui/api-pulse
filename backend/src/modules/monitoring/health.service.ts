@@ -12,13 +12,50 @@ export interface HealthScoreResult {
 
 export const healthService = {
   /**
+   * Cleans and normalizes project base URL.
+   * Strips Swagger UI, API doc page suffixes, and trailing slashes.
+   */
+  cleanBaseUrl(baseUrl: string): string {
+    let clean = (baseUrl || '').trim();
+    // Strip trailing slashes first
+    clean = clean.replace(/\/+$/, '');
+    // Strip swagger-ui or docs paths if entered by mistake as base URL
+    clean = clean.replace(/\/(swagger-ui(\/index\.html)?|swagger-ui\.html|api-docs|docs)$/i, '');
+    return clean.replace(/\/+$/, '');
+  },
+
+  /**
    * Safe URL construction:
    * Strips trailing slashes from baseUrl, ensures a leading slash on path,
+   * resolves path parameters with test values if needed,
    * prevents double slashes (e.g. https://httpbin.org/ + /get -> https://httpbin.org/get).
    */
-  buildFullUrl(baseUrl: string, path: string): string {
-    const cleanBase = (baseUrl || '').trim().replace(/\/+$/, '');
-    const cleanPath = (path || '').trim().replace(/^\/+/, '/');
+  buildFullUrl(baseUrl: string, path: string, pathParams?: Record<string, string>): string {
+    const cleanBase = this.cleanBaseUrl(baseUrl);
+    let resolvedPath = (path || '').trim();
+
+    // Resolve path parameters e.g. /users/{id} or /documents/preview/:token
+    resolvedPath = resolvedPath.replace(/\{([a-zA-Z0-9_-]+)\}|:([a-zA-Z0-9_-]+)/g, (match, p1, p2) => {
+      const key = p1 || p2;
+      if (pathParams && pathParams[key] !== undefined) {
+        return encodeURIComponent(pathParams[key]);
+      }
+      const lower = key.toLowerCase();
+      if (lower.includes('country') || lower.includes('countries')) return 'US';
+      if (lower.includes('provideraccount')) return 'acc_1';
+      if (lower.includes('provider')) return 'custom';
+      if (lower.includes('entity') || lower.includes('type')) return 'customer';
+      if (lower.includes('account') || lower.includes('contact') || lower.includes('lead') || lower.includes('process')) return '1';
+      if (lower.includes('uuid') || lower.includes('id')) return '00000000-0000-0000-0000-000000000001';
+      if (lower.includes('num') || lower.includes('count') || lower.includes('page') || lower.includes('limit')) return '1';
+      if (lower.includes('token') || lower.includes('jwt') || lower.includes('hash')) return 'test_token';
+      if (lower.includes('name') || lower.includes('slug') || lower.includes('item')) return 'sample_item';
+      if (lower.includes('email')) return 'test%40example.com';
+      if (lower.includes('date')) return '2026-01-01';
+      return '1';
+    });
+
+    const cleanPath = resolvedPath.replace(/^\/+/, '/');
     const normalizedPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     return `${cleanBase}${normalizedPath}`;
   },
@@ -72,12 +109,25 @@ export const healthService = {
   },
 
   /**
+   * Evaluates whether a given HTTP status code is accepted for the endpoint.
+   */
+  isStatusAccepted(statusCode: number, expectedStatus = 200, acceptedStatuses?: number[]): boolean {
+    if (statusCode === expectedStatus) return true;
+    if (acceptedStatuses && acceptedStatuses.includes(statusCode)) return true;
+    // Standard successful REST status codes when expectedStatus is in 2xx family
+    if (expectedStatus >= 200 && expectedStatus < 300 && statusCode >= 200 && statusCode < 300) {
+      return true;
+    }
+    return false;
+  },
+
+  /**
    * Calculate uptime percentage from historical request logs.
    * Uptime is the ratio of successful checks (matching expected status) to total checks.
    */
-  calculateUptime(logs: RequestLog[], expectedStatus = 200): number {
+  calculateUptime(logs: RequestLog[], expectedStatus = 200, acceptedStatuses?: number[]): number {
     if (!logs.length) return 100.0;
-    const successful = logs.filter(l => l.statusCode === expectedStatus && l.statusCode < 400).length;
+    const successful = logs.filter(l => this.isStatusAccepted(l.statusCode, expectedStatus, acceptedStatuses)).length;
     return Number(((successful / logs.length) * 100).toFixed(2));
   },
 
@@ -100,6 +150,7 @@ export const healthService = {
     currentStatusCode: number;
     currentResponseTime: number;
     expectedStatus?: number;
+    acceptedStatuses?: number[];
     latencyThresholdMs?: number;
     failureType?: RequestLog['failureType'];
     recentLogs?: RequestLog[];
@@ -109,6 +160,7 @@ export const healthService = {
       currentStatusCode,
       currentResponseTime,
       expectedStatus = 200,
+      acceptedStatuses,
       latencyThresholdMs = 500,
       failureType = 'none',
       recentLogs = [],
@@ -120,15 +172,18 @@ export const healthService = {
       ...recentLogs.filter(l => l.responseTime > 0).map(l => l.responseTime),
     ];
     const percentiles = this.calculatePercentiles(allLatencies);
-    const uptime = this.calculateUptime(recentLogs, expectedStatus);
+    const uptime = this.calculateUptime(recentLogs, expectedStatus, acceptedStatuses);
 
     let score = 100;
     let degradationReason: string | undefined;
 
     // --- Factor 1: Status Code & Availability Penalties ---
-    const isServerError = currentStatusCode >= 500;
+    const isServerError = currentStatusCode >= 500 && expectedStatus !== currentStatusCode;
     const isNetworkFailure = failureType === 'connection_refused' || failureType === 'timeout' || failureType === 'network_error';
-    const isStatusMismatch = currentStatusCode !== expectedStatus;
+    const isStatusMatch = this.isStatusAccepted(currentStatusCode, expectedStatus, acceptedStatuses);
+    const isStatusMismatch = !isStatusMatch;
+    // Auth failure is only penalized if the status was NOT accepted/expected
+    const isAuthFailure = (failureType === 'auth_failure' || currentStatusCode === 401 || currentStatusCode === 403) && isStatusMismatch;
 
     if (isServerError || isNetworkFailure) {
       // Severe drop: Unhealthy status
@@ -142,10 +197,18 @@ export const healthService = {
       } else {
         degradationReason = 'Network failure: Host unreachable';
       }
-    } else if (isStatusMismatch || currentStatusCode >= 400) {
+    } else if (isAuthFailure) {
+      // Authentication / Authorization Failure when unexpected
+      score -= 50;
+      degradationReason = `Authentication/Permission Error: HTTP ${currentStatusCode} (${currentStatusCode === 401 ? 'Unauthorized' : 'Forbidden'})`;
+    } else if (isStatusMismatch) {
       // Moderate drop: Degraded status
       score -= 35;
       degradationReason = `Unexpected HTTP ${currentStatusCode} (Expected ${expectedStatus})`;
+    } else if (isStatusMatch) {
+      if (!degradationReason) {
+        degradationReason = `Optimal status (HTTP ${currentStatusCode} ${currentStatusCode === 204 ? 'No Content' : currentStatusCode === 201 ? 'Created' : 'OK'})`;
+      }
     }
 
     // --- Factor 2: Latency Performance Penalties ---
@@ -165,7 +228,7 @@ export const healthService = {
       }
 
       score -= latencyPenalty;
-      if (!degradationReason) {
+      if (!degradationReason || isStatusMatch) {
         degradationReason = `High latency: ${currentResponseTime}ms (exceeds ${latencyThresholdMs}ms threshold)`;
       }
     }
@@ -173,7 +236,7 @@ export const healthService = {
     // --- Factor 3: Recent Historical Error Rate ---
     if (recentLogs.length > 0) {
       const recentWindow = recentLogs.slice(0, 10);
-      const errorsInWindow = recentWindow.filter(l => l.statusCode >= 400 || l.failureType !== 'none').length;
+      const errorsInWindow = recentWindow.filter(l => !this.isStatusAccepted(l.statusCode, expectedStatus, acceptedStatuses) || (l.failureType !== 'none' && l.failureType !== 'auth_failure')).length;
       if (errorsInWindow > 0) {
         const errorPenalty = Math.min(25, errorsInWindow * 4);
         score -= errorPenalty;
@@ -185,9 +248,9 @@ export const healthService = {
 
     // --- Factor 4: Consistent Recovery ---
     // If the latest check and the last 3 checks are all healthy and within latency, restore score towards 100
-    if (!isServerError && !isNetworkFailure && !isStatusMismatch && currentResponseTime <= latencyThresholdMs) {
+    if (!isServerError && !isNetworkFailure && isStatusMatch && currentResponseTime <= latencyThresholdMs) {
       const recentSuccessCount = recentLogs.slice(0, 5).filter(
-        l => l.statusCode === expectedStatus && l.responseTime <= latencyThresholdMs
+        l => this.isStatusAccepted(l.statusCode, expectedStatus, acceptedStatuses) && l.responseTime <= latencyThresholdMs
       ).length;
 
       if (recentSuccessCount >= 4) {

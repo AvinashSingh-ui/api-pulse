@@ -15,17 +15,18 @@ export const AppLayout: React.FC = () => {
   const sidebarWidth = isMobile ? 0 : collapsed ? 64 : 240;
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
       <NotificationNotifier />
       <Sidebar />
-      <Layout style={{ marginLeft: sidebarWidth, transition: 'margin-left 0.2s ease' }}>
+      <Layout style={{ marginLeft: sidebarWidth, transition: 'margin-left 0.2s ease, background 0.2s ease', background: 'var(--color-bg)' }}>
         <Header />
         <Content style={{
           marginTop: 60,
           padding: isMobile ? '16px 12px' : '24px',
           minHeight: 'calc(100vh - 60px)',
-          background: '#f5f7fa',
+          background: 'var(--color-bg)',
           overflowX: 'hidden',
+          transition: 'background 0.2s ease',
         }}>
           <Outlet />
         </Content>

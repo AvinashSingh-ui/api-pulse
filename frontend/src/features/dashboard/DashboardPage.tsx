@@ -119,18 +119,18 @@ export default function DashboardPage() {
           )}
           <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>{record.title}</span>
+              <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--color-text)' }}>{record.title}</span>
               {!record.isRead && (
                 <Tag color="error" style={{ fontSize: 10, padding: '0 6px', lineHeight: '18px', borderRadius: 6, fontWeight: 700 }}>
                   NEW
                 </Tag>
               )}
             </div>
-            <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>{record.message}</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 3 }}>{record.message}</div>
             {record.endpointPath && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                 {record.method && <HttpMethodTag method={record.method} size="sm" />}
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#4f46e5', fontWeight: 600 }}>
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, color: 'var(--color-text)', fontWeight: 600 }}>
                   {record.endpointPath}
                 </span>
                 {record.metadata?.statusCode && (
@@ -142,7 +142,7 @@ export default function DashboardPage() {
                   </Tag>
                 )}
                 {record.metadata?.responseTime !== undefined && (
-                  <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
                     {record.metadata.responseTime}ms
                   </span>
                 )}
@@ -173,7 +173,7 @@ export default function DashboardPage() {
       key: 'createdAt',
       width: 100,
       render: (t: string) => (
-        <span style={{ fontSize: 12, color: '#64748b', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>
           {fromNow(t)}
         </span>
       ),
@@ -187,8 +187,8 @@ export default function DashboardPage() {
       key: 'title',
       render: (text: string, record: Alert) => (
         <div>
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#0f172a' }}>{text}</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>{text}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>
             {fromNow(record.triggeredAt)}
           </div>
         </div>
@@ -221,7 +221,7 @@ export default function DashboardPage() {
       render: (_: unknown, r: Endpoint) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <HttpMethodTag method={r.method} size="sm" />
-          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: '#0f172a', fontWeight: 600 }}>
+          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 12, color: 'var(--color-text)', fontWeight: 600 }}>
             {r.path}
           </span>
         </div>
@@ -232,7 +232,7 @@ export default function DashboardPage() {
       dataIndex: 'requestsPerMin',
       key: 'rpm',
       width: 100,
-      render: (v: number) => <span style={{ fontWeight: 700, color: '#0f172a' }}>{formatNumber(v || 0)}</span>,
+      render: (v: number) => <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{formatNumber(v || 0)}</span>,
     },
     {
       title: 'P95 Latency',
@@ -314,17 +314,17 @@ export default function DashboardPage() {
           className="card-modern"
           style={{
             marginBottom: 24,
-            border: '1px solid #c7d2fe',
-            background: 'linear-gradient(135deg, #eef2ff 0%, #ffffff 100%)',
+            border: '1px solid var(--color-border)',
+            background: 'var(--color-bg-tertiary)',
           }}
           styles={{ body: { padding: '28px 32px' } }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20 }}>
             <div>
-              <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800, color: '#3730a3' }}>
+              <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 800, color: 'var(--color-text)' }}>
                 Welcome to API Pulse Command Center
               </h3>
-              <p style={{ margin: 0, color: '#475569', fontSize: 14 }}>
+              <p style={{ margin: 0, color: 'var(--color-text-secondary)', fontSize: 14 }}>
                 No active API projects configured yet. Connect your microservices or deployed endpoints to start receiving real-time observability telemetry.
               </p>
             </div>
@@ -349,12 +349,12 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {/* Executive System Health Status Banner (Replaces noisy 12 stacked cards) */}
+      {/* Executive System Health Status Banner */}
       <Card
         className="card-modern"
         style={{
           marginBottom: 24,
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+          background: 'var(--color-bg-secondary)',
           position: 'relative',
           overflow: 'hidden',
         }}
@@ -392,23 +392,23 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{healthyEndpoints}</span>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Healthy</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{healthyEndpoints}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Healthy</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{degradedEndpoints}</span>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Degraded</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{degradedEndpoints}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Degraded</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#f43f5e' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{downEndpoints}</span>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Outages</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{downEndpoints}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Outages</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#06b6d4' }} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{recoveredEndpoints}</span>
-                <span style={{ fontSize: 12, color: '#64748b' }}>Auto-Resolved (24h)</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>{recoveredEndpoints}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Auto-Resolved (24h)</span>
               </div>
             </div>
           </div>
@@ -416,11 +416,11 @@ export default function DashboardPage() {
           {/* Health Score Gauge / Visual */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 Global Health Score
               </div>
-              <div style={{ fontSize: 26, fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-                {totalEndpoints > 0 ? `${avgHealthScore}` : '0'}<span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>/100</span>
+              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>
+                {totalEndpoints > 0 ? `${avgHealthScore}` : '0'}<span style={{ fontSize: 14, color: 'var(--color-text-secondary)', fontWeight: 500 }}>/100</span>
               </div>
             </div>
             <Progress
@@ -429,11 +429,11 @@ export default function DashboardPage() {
               size={56}
               strokeWidth={8}
               strokeColor={{
-                '0%': '#4f46e5',
-                '100%': avgHealthScore >= 90 ? '#10b981' : avgHealthScore >= 50 ? '#f59e0b' : '#f43f5e',
+                '0%': 'var(--color-primary)',
+                '100%': avgHealthScore >= 90 ? '#10b981' : avgHealthScore >= 50 ? '#f59e0b' : '#ef4444',
               }}
               format={percent => (
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: 'var(--color-text)' }}>
                   {percent}%
                 </span>
               )}
@@ -471,7 +471,7 @@ export default function DashboardPage() {
             title="Monitored Endpoints"
             value={totalEndpoints.toString()}
             icon={<ApiOutlined />}
-            color="#4f46e5"
+            color="#71717a"
             subtitle={`${totalProjects} active microservice projects`}
             loading={loading}
           />
@@ -515,8 +515,8 @@ export default function DashboardPage() {
             className="card-modern"
             title={
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <BellOutlined style={{ color: '#4f46e5', fontSize: 16 }} />
-                <span style={{ fontWeight: 800, fontSize: 15 }}>Real-Time Health Incidents & Alerts</span>
+                <BellOutlined style={{ color: 'var(--color-text)', fontSize: 16 }} />
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Real-Time Health Incidents & Alerts</span>
               </div>
             }
             loading={loading}
@@ -524,7 +524,7 @@ export default function DashboardPage() {
               <Button
                 type="link"
                 onClick={() => navigate('/alerts')}
-                style={{ padding: 0, fontSize: 13, fontWeight: 600, color: '#4f46e5' }}
+                style={{ padding: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}
               >
                 Alerts Center <ArrowRightOutlined style={{ fontSize: 11 }} />
               </Button>
@@ -606,15 +606,15 @@ export default function DashboardPage() {
         className="card-modern"
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <ApiOutlined style={{ color: '#4f46e5', fontSize: 16 }} />
-            <span style={{ fontWeight: 800, fontSize: 15 }}>Monitored Endpoints Telemetry</span>
+            <ApiOutlined style={{ color: 'var(--color-text)', fontSize: 16 }} />
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Monitored Endpoints Telemetry</span>
           </div>
         }
         extra={
           <Button
             type="link"
             onClick={() => navigate('/endpoints')}
-            style={{ padding: 0, fontSize: 13, fontWeight: 600, color: '#4f46e5' }}
+            style={{ padding: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}
           >
             Manage Endpoints <ArrowRightOutlined style={{ fontSize: 11 }} />
           </Button>

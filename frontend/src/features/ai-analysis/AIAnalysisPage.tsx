@@ -20,22 +20,9 @@ const { Paragraph, Text } = Typography;
 
 const TYPE_ICON: Record<string, React.ReactNode> = {
   anomaly:        <ExclamationCircleOutlined style={{ color: '#ef4444' }} />,
-  trend:          <ThunderboltOutlined       style={{ color: '#4f8ef7' }} />,
+  trend:          <ThunderboltOutlined       style={{ color: '#3b82f6' }} />,
   recommendation: <BulbOutlined             style={{ color: '#f59e0b' }} />,
   prediction:     <WarningOutlined          style={{ color: '#8b5cf6' }} />,
-};
-
-const TYPE_COLOR: Record<string, string> = {
-  anomaly:        'error',
-  trend:          'processing',
-  recommendation: 'warning',
-  prediction:     'default',
-};
-
-const SEV_COLOR: Record<string, string> = {
-  critical: '#fee2e2',
-  warning:  '#fef3c7',
-  info:     '#dbeafe',
 };
 
 interface ChatMessage {
@@ -54,13 +41,18 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
 
   return (
     <Card
+      className="card-modern"
       style={{
-        marginBottom: 12,
-        borderRadius: 10,
-        border: '1px solid #e2e8f0',
-        background: SEV_COLOR[insight.severity] ?? '#f8fafc',
+        marginBottom: 16,
+        borderRadius: 12,
+        background: 'var(--color-bg-secondary)',
+        borderLeft: insight.severity === 'critical'
+          ? '4px solid #ef4444'
+          : insight.severity === 'warning'
+          ? '4px solid #f59e0b'
+          : '4px solid #3b82f6',
       }}
-      styles={{ body: { padding: '16px 20px' } }}
+      styles={{ body: { padding: '18px 22px' } }}
     >
       <div
         style={{
@@ -70,32 +62,42 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
           marginBottom: 10,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {TYPE_ICON[insight.type] || <BulbOutlined style={{ color: '#4f8ef7' }} />}
-          <span style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {TYPE_ICON[insight.type] || <BulbOutlined style={{ color: '#3b82f6' }} />}
+          <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
             {insight.title}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 16 }}>
-          <Tag
-            color={TYPE_COLOR[insight.type] || 'default'}
-            style={{ fontSize: 10, fontWeight: 600 }}
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              borderRadius: 6,
+              padding: '2px 8px',
+              background: 'var(--color-bg-tertiary)',
+              color: 'var(--color-text)',
+              border: '1px solid var(--color-border)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              lineHeight: '18px',
+            }}
           >
-            {insight.type?.toUpperCase()}
-          </Tag>
+            {insight.type}
+          </span>
         </div>
       </div>
 
       <Paragraph
-        style={{ fontSize: 13, color: '#475569', margin: '0 0 12px', lineHeight: 1.7 }}
+        style={{ fontSize: 13, color: 'var(--color-text-secondary)', margin: '0 0 12px', lineHeight: 1.7 }}
       >
         {insight.description}
       </Paragraph>
 
       {insight.likelyCauses && insight.likelyCauses.length > 0 && (
-        <div style={{ marginBottom: 12, background: 'rgba(255,255,255,0.7)', padding: '8px 12px', borderRadius: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 4 }}>Likely Causes:</div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569' }}>
+        <div style={{ marginBottom: 12, background: 'var(--color-bg-tertiary)', padding: '8px 12px', borderRadius: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Likely Causes:</div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--color-text-secondary)' }}>
             {insight.likelyCauses.map((c, idx) => (
               <li key={idx}>
                 <strong>{c.cause}</strong> ({c.confidence} confidence) — {c.evidence}
@@ -106,9 +108,9 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
       )}
 
       {insight.suggestedChecks && insight.suggestedChecks.length > 0 && (
-        <div style={{ marginBottom: 12, background: 'rgba(255,255,255,0.7)', padding: '8px 12px', borderRadius: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 4 }}>Recommended Actions:</div>
-          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#475569' }}>
+        <div style={{ marginBottom: 12, background: 'var(--color-bg-tertiary)', padding: '8px 12px', borderRadius: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Recommended Actions:</div>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--color-text-secondary)' }}>
             {insight.suggestedChecks.map((s, idx) => (
               <li key={idx}>{s}</li>
             ))}
@@ -124,7 +126,7 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 11, color: '#94a3b8' }}>Confidence</span>
+          <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Confidence</span>
           <Progress
             percent={confVal}
             size="small"
@@ -132,11 +134,11 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
             strokeColor={confidenceColor(confVal)}
             style={{ width: 80, margin: 0 }}
           />
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text)' }}>
             {confVal}%
           </span>
         </div>
-        <span style={{ fontSize: 11, color: '#94a3b8' }}>
+        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>
           {insight.createdAt ? fromNow(insight.createdAt) : 'Just now'}
         </span>
       </div>
@@ -147,7 +149,7 @@ const InsightCard: React.FC<{ insight: AIInsight }> = ({ insight }) => {
 const ThinkingOverlay: React.FC = () => (
   <div style={{ textAlign: 'center', padding: 60 }}>
     <Spin size="large" />
-    <p style={{ marginTop: 16, color: '#64748b' }}>
+    <p style={{ marginTop: 16, color: 'var(--color-text-secondary)' }}>
       AI is analysing your API telemetry and performance patterns…
     </p>
   </div>
@@ -174,7 +176,7 @@ export default function AIAnalysisPage() {
     try {
       const [insightsRes, endpointsRes] = await Promise.all([
         aiService.getInsights().catch(() => []),
-        endpointsService.list({ pageSize: 100 }).catch(() => ({ data: [] })),
+        endpointsService.list({ pageSize: 1000 }).catch(() => ({ data: [] })),
       ]);
       setInsights(insightsRes || []);
       setEndpoints(endpointsRes.data || []);
@@ -353,18 +355,8 @@ export default function AIAnalysisPage() {
             className="card-modern"
             title={
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #d946ef 100%)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <RobotOutlined style={{ color: '#fff', fontSize: 16 }} />
+                <div className="modal-icon-badge" style={{ width: 32, height: 32 }}>
+                  <RobotOutlined style={{ fontSize: 16 }} />
                 </div>
                 <span style={{ fontWeight: 800, fontSize: 15 }}>Ask AI Copilot</span>
                 <Badge

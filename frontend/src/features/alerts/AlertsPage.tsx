@@ -46,34 +46,21 @@ import { SeverityBadge } from '@/components/common/StatusBadge';
 import { HttpMethodTag } from '@/components/common/HttpMethodTag';
 import { useResponsive } from '@/hooks/useResponsive';
 import { fromNow } from '@/utils';
+import { useAppSelector } from '@/app/hooks';
 import { alertsService }   from '@/services/endpoints/alerts';
 import { projectsService } from '@/services/endpoints/projects';
 import { endpointsService } from '@/services/endpoints/endpoints';
 import { aiService } from '@/services/endpoints/ai';
+import { useTheme } from '@/hooks/useTheme';
 import type { Alert, AlertRule, AlertSeverity, Project, Endpoint, AIInsight } from '@/types';
 
 const { Text, Paragraph } = Typography;
 
-const SEVERITY_ROW_BG: Record<AlertSeverity, string> = {
-  critical: '#fff5f5',
-  high: '#fff8f0',
-  medium: '#fffbeb',
-  low: '#f0f9ff',
-};
-
-/**
- * Alerts & Incident Response Page
- * ----------------------------------------------------
- * Beginner-Friendly Structure:
- * 1. Fetches active alerts, resolved history, and alert rules from database
- * 2. If navigated from a failing API ping (?endpointId=...&aiFix=true), automatically
- *    opens the AI Incident Diagnosis & Resolution Drawer
- * 3. Allows testing and recovering the API in-place with "Re-Test API Now"
- */
 export default function AlertsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isMobile } = useResponsive();
+  const { isDark } = useTheme();
 
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [rules, setRules] = useState<AlertRule[]>([]);
@@ -347,8 +334,8 @@ export default function AlertsPage() {
       key: 'title',
       render: (_, r) => (
         <div>
-          <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{r.title}</div>
-          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{r.message}</div>
+          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>{r.title}</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 2 }}>{r.message}</div>
         </div>
       ),
     },
@@ -365,7 +352,7 @@ export default function AlertsPage() {
       key: 'ts',
       width: 120,
       render: (v: string) => (
-        <span style={{ fontSize: 12, color: '#94a3b8' }}>{fromNow(v)}</span>
+        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{fromNow(v)}</span>
       ),
     },
     {
@@ -375,7 +362,7 @@ export default function AlertsPage() {
       render: (_, r) => (
         <span style={{ fontFamily: 'monospace', fontSize: 12 }}>
           <span style={{ color: '#ef4444', fontWeight: 600 }}>{r.value}</span>
-          <span style={{ color: '#94a3b8' }}> / {r.threshold}</span>
+          <span style={{ color: 'var(--color-text-secondary)' }}> / {r.threshold}</span>
         </span>
       ),
     },
@@ -511,12 +498,27 @@ export default function AlertsPage() {
     {
       key: 'active',
       label: (
-        <span>
-          Active Incidents{' '}
-          <Badge
-            count={activeAlerts.length}
-            style={{ backgroundColor: activeAlerts.length > 0 ? '#ef4444' : '#22c55e', marginLeft: 4 }}
-          />
+        <span style={{ fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          Active Incidents
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 22,
+              height: 20,
+              padding: '0 6px',
+              borderRadius: 10,
+              fontSize: 12,
+              fontWeight: 700,
+              backgroundColor: activeAlerts.length > 0 ? (isDark ? '#7f1d1d' : '#fee2e2') : (isDark ? '#27272a' : '#e4e4e7'),
+              color: activeAlerts.length > 0 ? (isDark ? '#fca5a5' : '#dc2626') : (isDark ? '#a1a1aa' : '#52525b'),
+              border: `1px solid ${activeAlerts.length > 0 ? (isDark ? '#991b1b' : '#fecaca') : (isDark ? '#3f3f46' : '#d4d4d8')}`,
+              lineHeight: 1,
+            }}
+          >
+            {activeAlerts.length}
+          </span>
         </span>
       ),
       children: activeAlerts.length === 0 ? (
@@ -531,15 +533,55 @@ export default function AlertsPage() {
           columns={alertColumns}
           rowKey="id"
           pagination={false}
-          size="small"
+          size="middle"
           scroll={{ x: 800 }}
-          onRow={(r) => ({ style: { background: SEVERITY_ROW_BG[r.severity] } })}
+          onRow={(r) => {
+            const isHighOrCritical = r.severity === 'critical' || r.severity === 'high';
+            return {
+              style: {
+                background: isDark ? '#141418' : '#ffffff',
+                borderLeft: isHighOrCritical
+                  ? `3px solid ${r.severity === 'critical' ? '#ef4444' : '#f59e0b'}`
+                  : `3px solid ${isDark ? '#27272a' : '#e4e4e7'}`,
+                transition: 'background 0.2s ease',
+              },
+              onMouseEnter: (e) => {
+                (e.currentTarget as HTMLElement).style.background = isDark ? '#1c1c22' : '#f4f4f5';
+              },
+              onMouseLeave: (e) => {
+                (e.currentTarget as HTMLElement).style.background = isDark ? '#141418' : '#ffffff';
+              },
+            };
+          }}
         />
       ),
     },
     {
       key: 'history',
-      label: `Incident History (${historyAlerts.length})`,
+      label: (
+        <span style={{ fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          Incident History
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 22,
+              height: 20,
+              padding: '0 6px',
+              borderRadius: 10,
+              fontSize: 12,
+              fontWeight: 700,
+              backgroundColor: isDark ? '#27272a' : '#e4e4e7',
+              color: isDark ? '#a1a1aa' : '#52525b',
+              border: `1px solid ${isDark ? '#3f3f46' : '#d4d4d8'}`,
+              lineHeight: 1,
+            }}
+          >
+            {historyAlerts.length}
+          </span>
+        </span>
+      ),
       children: historyAlerts.length === 0 ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -552,14 +594,49 @@ export default function AlertsPage() {
           columns={alertColumns}
           rowKey="id"
           pagination={{ pageSize: 20 }}
-          size="small"
+          size="middle"
           scroll={{ x: 800 }}
+          onRow={() => ({
+            style: {
+              background: isDark ? '#141418' : '#ffffff',
+              transition: 'background 0.2s ease',
+            },
+            onMouseEnter: (e) => {
+              (e.currentTarget as HTMLElement).style.background = isDark ? '#1c1c22' : '#f8f9fa';
+            },
+            onMouseLeave: (e) => {
+              (e.currentTarget as HTMLElement).style.background = isDark ? '#141418' : '#ffffff';
+            },
+          })}
         />
       ),
     },
     {
       key: 'rules',
-      label: `Alert Rules (${rules.length})`,
+      label: (
+        <span style={{ fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          Alert Rules
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minWidth: 22,
+              height: 20,
+              padding: '0 6px',
+              borderRadius: 10,
+              fontSize: 12,
+              fontWeight: 700,
+              backgroundColor: isDark ? '#27272a' : '#e4e4e7',
+              color: isDark ? '#a1a1aa' : '#52525b',
+              border: `1px solid ${isDark ? '#3f3f46' : '#d4d4d8'}`,
+              lineHeight: 1,
+            }}
+          >
+            {rules.length}
+          </span>
+        </span>
+      ),
       children: rules.length === 0 ? (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -576,8 +653,20 @@ export default function AlertsPage() {
           columns={ruleColumns}
           rowKey="id"
           pagination={false}
-          size="small"
+          size="middle"
           scroll={{ x: 800 }}
+          onRow={() => ({
+            style: {
+              background: isDark ? '#141418' : '#ffffff',
+              transition: 'background 0.2s ease',
+            },
+            onMouseEnter: (e) => {
+              (e.currentTarget as HTMLElement).style.background = isDark ? '#1c1c22' : '#f8f9fa';
+            },
+            onMouseLeave: (e) => {
+              (e.currentTarget as HTMLElement).style.background = isDark ? '#141418' : '#ffffff';
+            },
+          })}
         />
       ),
     },
@@ -620,26 +709,14 @@ export default function AlertsPage() {
       <Drawer
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #7c3aed, #a855f7)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontSize: 18,
-              }}
-            >
+            <div className="modal-icon-badge" style={{ width: 34, height: 34 }}>
               <RobotOutlined />
             </div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#1e293b' }}>
+              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--color-text)' }}>
                 AI Incident Diagnosis & Resolution
               </div>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 400 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 400 }}>
                 Autonomous telemetry analysis & developer remediation plan
               </div>
             </div>
@@ -659,7 +736,7 @@ export default function AlertsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
             <Button
               type="primary"
-              style={{ background: '#7c3aed', borderColor: '#7c3aed', display: 'flex', alignItems: 'center', gap: 6 }}
+              className="btn-primary-gradient"
               icon={<ThunderboltOutlined />}
               loading={reTesting}
               onClick={handleReTestEndpoint}
@@ -689,7 +766,7 @@ export default function AlertsPage() {
         {loadingAi ? (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
             <Spin size="large" />
-            <div style={{ marginTop: 16, color: '#64748b', fontSize: 14 }}>
+            <div style={{ marginTop: 16, color: 'var(--color-text-secondary)', fontSize: 14 }}>
               Analyzing incident telemetry and generating AI remediation code...
             </div>
           </div>
@@ -700,8 +777,8 @@ export default function AlertsPage() {
               size="small"
               style={{
                 borderRadius: 10,
-                border: '1px solid #fee2e2',
-                background: '#fff5f5',
+                border: '1px solid var(--color-border)',
+                background: 'var(--color-bg-tertiary)',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -710,12 +787,12 @@ export default function AlertsPage() {
                     {selectedEndpointForAi && (
                       <HttpMethodTag method={selectedEndpointForAi.method} size="sm" />
                     )}
-                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 14, color: '#1e293b' }}>
+                    <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>
                       {selectedEndpointForAi?.path || selectedAlertForAi?.title}
                     </span>
                     <SeverityBadge severity={selectedAlertForAi?.severity || 'critical'} />
                   </div>
-                  <div style={{ fontSize: 13, color: '#475569' }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
                     {selectedAlertForAi?.message}
                   </div>
                 </div>
@@ -725,7 +802,7 @@ export default function AlertsPage() {
                 </Tag>
               </div>
 
-              <div style={{ display: 'flex', gap: 16, marginTop: 12, paddingTop: 10, borderTop: '1px solid #fecaca', fontSize: 12, color: '#64748b' }}>
+              <div style={{ display: 'flex', gap: 16, marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--color-border)', fontSize: 12, color: 'var(--color-text-secondary)' }}>
                 <div>
                   <strong>Project:</strong> {getProjectName(selectedAlertForAi?.projectId || selectedEndpointForAi?.projectId || '')}
                 </div>
@@ -756,7 +833,7 @@ export default function AlertsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <BulbOutlined style={{ color: '#d97706', fontSize: 16 }} />
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>AI Root-Cause Diagnosis</span>
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>AI Root-Cause Diagnosis</span>
                   </div>
                   <Tag color="purple" style={{ borderRadius: 12, padding: '1px 10px', fontWeight: 600 }}>
                     AI Confidence: {Math.round((aiInsight?.confidence || 0.94) * 100)}%
@@ -765,16 +842,16 @@ export default function AlertsPage() {
               }
               style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}
             >
-              <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a', marginBottom: 6 }}>
+              <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)', marginBottom: 6 }}>
                 {aiInsight?.title || 'Upstream Application Exception Detected'}
               </div>
-              <Paragraph style={{ color: '#475569', fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
+              <Paragraph style={{ color: 'var(--color-text-secondary)', fontSize: 13, lineHeight: 1.6, marginBottom: 12 }}>
                 {aiInsight?.description || 'The target server failed to return the expected status code. Diagnostic analysis indicates an uncaught runtime exception, downstream timeout, or unexpected server shutdown.'}
               </Paragraph>
 
               {aiInsight?.likelyCauses && aiInsight.likelyCauses.length > 0 && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
                     Probable Failure Causes & Evidence
                   </div>
                   <Space direction="vertical" size={8} style={{ width: '100%' }}>
@@ -782,10 +859,10 @@ export default function AlertsPage() {
                       <div
                         key={idx}
                         style={{
-                          background: '#f8fafc',
+                          background: 'var(--color-bg-tertiary)',
                           padding: '10px 12px',
                           borderRadius: 8,
-                          border: '1px solid #e2e8f0',
+                          border: '1px solid var(--color-border)',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -795,9 +872,9 @@ export default function AlertsPage() {
                           >
                             {cause.confidence.toUpperCase()} CONFIDENCE
                           </Tag>
-                          <span style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>{cause.cause}</span>
+                          <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text)' }}>{cause.cause}</span>
                         </div>
-                        <div style={{ fontSize: 12, color: '#64748b' }}>
+                        <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
                           <strong>Evidence:</strong> {cause.evidence}
                         </div>
                       </div>
@@ -808,10 +885,10 @@ export default function AlertsPage() {
 
               {aiInsight?.suggestedChecks && aiInsight.suggestedChecks.length > 0 && (
                 <div style={{ marginTop: 16 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
                     Suggested Diagnostic Checks
                   </div>
-                  <ul style={{ paddingLeft: 18, margin: 0, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                  <ul style={{ paddingLeft: 18, margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                     {aiInsight.suggestedChecks.map((chk, idx) => (
                       <li key={idx} style={{ marginBottom: 4 }}>{chk}</li>
                     ))}
@@ -826,8 +903,8 @@ export default function AlertsPage() {
               title={
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CodeOutlined style={{ color: '#7c3aed', fontSize: 16 }} />
-                    <span style={{ fontWeight: 600, color: '#1e293b' }}>Recommended Remediation & Code Fix</span>
+                    <CodeOutlined style={{ color: 'var(--color-text)', fontSize: 16 }} />
+                    <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Recommended Remediation & Code Fix</span>
                   </div>
                   {aiInsight?.suggestedFix?.codeSnippet && (
                     <Button
@@ -841,15 +918,15 @@ export default function AlertsPage() {
                   )}
                 </div>
               }
-              style={{ borderRadius: 10, border: '1px solid #e2e8f0' }}
+              style={{ borderRadius: 10, border: '1px solid var(--color-border)' }}
             >
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#1e293b', marginBottom: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>
                 {aiInsight?.suggestedFix?.summary || 'Implement defensive exception boundaries and circuit-breaker retry policies'}
               </div>
 
               {aiInsight?.suggestedFix?.steps && aiInsight.suggestedFix.steps.length > 0 && (
                 <div style={{ marginBottom: 12 }}>
-                  <ol style={{ paddingLeft: 18, margin: 0, fontSize: 13, color: '#475569', lineHeight: 1.6 }}>
+                  <ol style={{ paddingLeft: 18, margin: 0, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                     {aiInsight.suggestedFix.steps.map((st, i) => (
                       <li key={i} style={{ marginBottom: 4 }}>{st}</li>
                     ))}

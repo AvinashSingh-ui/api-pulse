@@ -83,6 +83,7 @@ export default function EndpointsPage() {
     try {
       const [epsRes, projsRes] = await Promise.all([
         endpointsService.list({
+          pageSize: 1000,
           search: search || undefined,
           method: method !== 'all' ? method : undefined,
           status: status !== 'all' ? status : undefined,
@@ -103,6 +104,7 @@ export default function EndpointsPage() {
   const loadDataSilently = useCallback(async () => {
     try {
       const epsRes = await endpointsService.list({
+        pageSize: 1000,
         search: search || undefined,
         method: method !== 'all' ? method : undefined,
         status: status !== 'all' ? status : undefined,
@@ -377,6 +379,8 @@ export default function EndpointsPage() {
       } else {
         message.success(`Check passed: HTTP ${res.statusCode || '200'} OK in ${res.responseTime}ms (Score: ${res.healthScore ?? 100}/100)`);
       }
+
+      dispatch(apiSlice.util.invalidateTags(['Notifications', 'HealthStats', 'Alerts']));
     } catch (err: any) {
       message.error(err.response?.data?.message || 'Health check execution failed');
     } finally {
@@ -439,7 +443,7 @@ export default function EndpointsPage() {
                   style={{
                     fontSize: 13,
                     fontFamily: 'JetBrains Mono, monospace',
-                    color: '#0f172a',
+                    color: 'var(--color-text)',
                     fontWeight: 700,
                     cursor: 'pointer',
                   }}
@@ -457,12 +461,12 @@ export default function EndpointsPage() {
                 />
               </Tooltip>
             </div>
-            <div style={{ fontSize: 12, color: '#64748b', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>{r.name}</span>
               {proj && (
                 <>
-                  <span style={{ color: '#cbd5e1' }}>•</span>
-                  <span style={{ color: '#6366f1', fontWeight: 600 }}>{proj.name}</span>
+                  <span style={{ color: 'var(--color-border)' }}>•</span>
+                  <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>{proj.name}</span>
                 </>
               )}
             </div>
@@ -545,10 +549,10 @@ export default function EndpointsPage() {
       key: 'rt',
       width: 140,
       render: (_, r) => (
-        <span style={{ fontSize: 12, fontFamily: 'JetBrains Mono, monospace' }}>
+        <span style={{ fontSize: 12, fontFamily: 'var(--font-mono, monospace)' }}>
           <span style={{ color: '#10b981', fontWeight: 700 }}>{formatResponseTime(r.responseTimeP50)}</span>
-          <span style={{ color: '#cbd5e1', margin: '0 4px' }}>/</span>
-          <span style={{ color: r.responseTimeP95 > 500 ? '#f43f5e' : r.responseTimeP95 > 200 ? '#f59e0b' : '#4f46e5', fontWeight: 700 }}>
+          <span style={{ color: 'var(--color-border)', margin: '0 4px' }}>/</span>
+          <span style={{ color: r.responseTimeP95 > 500 ? '#ef4444' : r.responseTimeP95 > 200 ? '#f59e0b' : 'var(--color-text)', fontWeight: 700 }}>
             {formatResponseTime(r.responseTimeP95)}
           </span>
         </span>
@@ -571,7 +575,7 @@ export default function EndpointsPage() {
                 strokeColor={val >= 99 ? '#10b981' : val >= 95 ? '#f59e0b' : '#f43f5e'}
                 style={{ width: 60, margin: 0 }}
               />
-              <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a' }}>{val.toFixed(1)}%</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text)' }}>{val.toFixed(1)}%</span>
             </div>
           </Tooltip>
         );
@@ -584,7 +588,7 @@ export default function EndpointsPage() {
       width: 120,
       render: (v: string) => (
         <Tooltip title={v ? new Date(v).toLocaleString() : 'Never'}>
-          <span style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{fromNow(v)}</span>
+          <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 500 }}>{fromNow(v)}</span>
         </Tooltip>
       ),
     },
@@ -613,7 +617,7 @@ export default function EndpointsPage() {
               <Tooltip title="AI Root Cause Analysis (Powered by Gemini)">
                 <Button
                   size="small"
-                  icon={<RobotOutlined style={{ color: '#7c3aed' }} />}
+                  icon={<RobotOutlined style={{ color: 'var(--color-text)' }} />}
                   onClick={(e) => handleOpenAiDiagnosis(r, e)}
                   style={{ borderRadius: 6, height: 28, width: 28 }}
                 />
@@ -624,7 +628,7 @@ export default function EndpointsPage() {
             <Tooltip title="Execute synthetic check now">
               <Button
                 size="small"
-                icon={<ThunderboltOutlined style={{ color: isRunning ? '#94a3b8' : '#4f46e5' }} />}
+                icon={<ThunderboltOutlined style={{ color: isRunning ? 'var(--color-text-tertiary)' : 'var(--color-text)' }} />}
                 loading={isRunning}
                 disabled={isRunning}
                 onClick={(e) => handleRunCheck(r.id, e)}
@@ -839,7 +843,7 @@ export default function EndpointsPage() {
       {isLoading ? (
         <div style={{ textAlign: 'center', padding: '80px 0' }}>
           <Spin size="large" />
-          <div style={{ marginTop: 14, color: '#64748b', fontWeight: 500 }}>
+          <div style={{ marginTop: 14, color: 'var(--color-text-secondary)', fontWeight: 500 }}>
             Fetching live endpoint measurements...
           </div>
         </div>
@@ -866,7 +870,9 @@ export default function EndpointsPage() {
             rowKey="id"
             pagination={{
               pageSize: 15,
-              showTotal: (t) => `${t} total endpoints`,
+              showSizeChanger: true,
+              pageSizeOptions: ['15', '25', '50', '100', '250', '500'],
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} total endpoints`,
               style: { padding: '12px 20px' },
             }}
             scroll={{ x: 1000 }}
@@ -881,7 +887,7 @@ export default function EndpointsPage() {
       {/* Register Endpoint Modal */}
       <Modal
         title={
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-text)' }}>
             Register New Endpoint
           </div>
         }
@@ -917,14 +923,14 @@ export default function EndpointsPage() {
           <Form.Item
             name="name"
             label="Endpoint Friendly Name"
-            rules={[{ required: true, message: 'Please enter a name' }]}
+            rules={[{ required: true, message: 'Please enter a name for this endpoint' }]}
           >
-            <Input placeholder="e.g. User Profile Service" />
+            <Input placeholder="e.g. Fetch Order Summary" />
           </Form.Item>
 
           <Space style={{ display: 'flex', width: '100%' }} align="start">
-            <Form.Item name="method" label="Method" style={{ width: 130 }} rules={[{ required: true }]}>
-              <Select options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ label: m, value: m }))} />
+            <Form.Item name="method" label="Method" style={{ width: 140 }} rules={[{ required: true }]}>
+              <Select options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].map(m => ({ label: m, value: m }))} />
             </Form.Item>
             <Form.Item
               name="path"
@@ -941,14 +947,14 @@ export default function EndpointsPage() {
               ]}
               extra={
                 activeCreateProject && (
-                  <div style={{ fontSize: 12, color: '#4f46e5', marginTop: 4, wordBreak: 'break-all', fontWeight: 500 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4, wordBreak: 'break-all', fontWeight: 500 }}>
                     <LinkOutlined style={{ marginRight: 4 }} />
-                    Full URL: <strong>{buildFullUrl(activeCreateProject.baseUrl, enteredCreatePath || '/')}</strong>
+                    Full URL: <strong style={{ color: 'var(--color-text)' }}>{buildFullUrl(activeCreateProject.baseUrl, enteredCreatePath || '/')}</strong>
                   </div>
                 )
               }
             >
-              <Input placeholder="/api/v1/users/:id" />
+              <Input placeholder="/api/v1/orders/:id" />
             </Form.Item>
           </Space>
 
@@ -962,7 +968,7 @@ export default function EndpointsPage() {
               ]} />
             </Form.Item>
             <Form.Item name="expectedStatus" label="Expected HTTP Status" style={{ flex: 1 }}>
-              <Select options={[200, 201, 204, 301, 302, 401, 404].map(c => ({ label: `HTTP ${c}`, value: c }))} />
+              <Select options={[200, 201, 202, 204, 301, 302, 400, 401, 403, 404, 409, 422, 500].map(c => ({ label: `HTTP ${c}`, value: c }))} />
             </Form.Item>
           </Space>
 
@@ -971,7 +977,7 @@ export default function EndpointsPage() {
               name="latencyThresholdMs"
               label={
                 <Tooltip title="Responses slower than this threshold degrade the Health Score even if HTTP 200 is returned.">
-                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: '#4f46e5' }} /></span>
+                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: 'var(--color-text-tertiary)' }} /></span>
                 </Tooltip>
               }
               style={{ flex: 1 }}
@@ -987,7 +993,7 @@ export default function EndpointsPage() {
             <Select mode="tags" placeholder="e.g. auth, payments, critical" />
           </Form.Item>
 
-          <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+          <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>
             Request Payload & Custom Headers
           </Divider>
 
@@ -1113,7 +1119,7 @@ export default function EndpointsPage() {
       {/* Edit Endpoint Modal */}
       <Modal
         title={
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-text)' }}>
             Edit Endpoint Configuration
           </div>
         }
@@ -1136,14 +1142,14 @@ export default function EndpointsPage() {
           <Form.Item
             name="name"
             label="Endpoint Friendly Name"
-            rules={[{ required: true, message: 'Please enter a name' }]}
+            rules={[{ required: true, message: 'Please enter a name for this endpoint' }]}
           >
-            <Input placeholder="e.g. User Profile Service" />
+            <Input placeholder="e.g. Fetch Order Summary" />
           </Form.Item>
 
           <Space style={{ display: 'flex', width: '100%' }} align="start">
-            <Form.Item name="method" label="Method" style={{ width: 130 }} rules={[{ required: true }]}>
-              <Select options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => ({ label: m, value: m }))} />
+            <Form.Item name="method" label="Method" style={{ width: 140 }} rules={[{ required: true }]}>
+              <Select options={['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'].map(m => ({ label: m, value: m }))} />
             </Form.Item>
             <Form.Item
               name="path"
@@ -1160,14 +1166,14 @@ export default function EndpointsPage() {
               ]}
               extra={
                 activeEditProject && (
-                  <div style={{ fontSize: 12, color: '#4f46e5', marginTop: 4, wordBreak: 'break-all', fontWeight: 500 }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4, wordBreak: 'break-all', fontWeight: 500 }}>
                     <LinkOutlined style={{ marginRight: 4 }} />
-                    Full URL: <strong>{buildFullUrl(activeEditProject.baseUrl, enteredEditPath || editingEndpoint?.path || '/')}</strong>
+                    Full URL: <strong style={{ color: 'var(--color-text)' }}>{buildFullUrl(activeEditProject.baseUrl, enteredEditPath || editingEndpoint?.path || '/')}</strong>
                   </div>
                 )
               }
             >
-              <Input placeholder="/api/v1/users/:id" />
+              <Input placeholder="/api/v1/orders/:id" />
             </Form.Item>
           </Space>
 
@@ -1181,7 +1187,7 @@ export default function EndpointsPage() {
               ]} />
             </Form.Item>
             <Form.Item name="expectedStatus" label="Expected HTTP Status" style={{ flex: 1 }}>
-              <Select options={[200, 201, 204, 301, 302, 401, 404].map(c => ({ label: `HTTP ${c}`, value: c }))} />
+              <Select options={[200, 201, 202, 204, 301, 302, 400, 401, 403, 404, 409, 422, 500].map(c => ({ label: `HTTP ${c}`, value: c }))} />
             </Form.Item>
           </Space>
 
@@ -1190,7 +1196,7 @@ export default function EndpointsPage() {
               name="latencyThresholdMs"
               label={
                 <Tooltip title="Responses slower than this threshold degrade the Health Score even if HTTP 200 is returned.">
-                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: '#4f46e5' }} /></span>
+                  <span>Latency Threshold (ms) <InfoCircleOutlined style={{ color: 'var(--color-text-tertiary)' }} /></span>
                 </Tooltip>
               }
               style={{ flex: 1 }}
@@ -1206,7 +1212,7 @@ export default function EndpointsPage() {
             <Select mode="tags" />
           </Form.Item>
 
-          <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: '#475569', fontWeight: 600 }}>
+          <Divider style={{ margin: '16px 0 12px', fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>
             Request Payload & Custom Headers
           </Divider>
 
@@ -1342,26 +1348,14 @@ export default function EndpointsPage() {
         onCancel={() => { setIsAiModalOpen(false); setSelectedAiEndpoint(null); setAiInsight(null); }}
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #7c3aed 0%, #d946ef 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#ffffff',
-                fontSize: 18,
-              }}
-            >
+            <div className="modal-icon-badge">
               <RobotOutlined />
             </div>
             <div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>
                 AI Root Cause Analysis & Fix
               </div>
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 400 }}>
                 Powered by Google Gemini • Live Telemetry Diagnosis
               </div>
             </div>
@@ -1378,12 +1372,12 @@ export default function EndpointsPage() {
         {selectedAiEndpoint && (
           <div style={{ marginTop: 16 }}>
             {/* Header info */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '12px 16px', background: '#f8fafc', borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, padding: '12px 16px', background: 'var(--color-bg-tertiary)', borderRadius: 12, border: '1px solid var(--color-border)', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Tag className={getMethodBadgeClass(selectedAiEndpoint.method)} style={{ margin: 0, fontWeight: 700 }}>
                   {selectedAiEndpoint.method}
                 </Tag>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, color: '#0f172a', fontSize: 13 }}>
+                <span style={{ fontFamily: 'var(--font-mono, monospace)', fontWeight: 700, color: 'var(--color-text)', fontSize: 13 }}>
                   {selectedAiEndpoint.path}
                 </span>
               </div>
@@ -1396,7 +1390,7 @@ export default function EndpointsPage() {
                     HTTP {selectedAiEndpoint.lastStatusCode}
                   </Tag>
                 )}
-                <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>
+                <span style={{ fontSize: 12, color: 'var(--color-text-secondary)', fontWeight: 600 }}>
                   P50: {selectedAiEndpoint.responseTimeP50 || 0}ms
                 </span>
               </div>
@@ -1405,18 +1399,18 @@ export default function EndpointsPage() {
             {isLoadingAi ? (
               <div style={{ textAlign: 'center', padding: '48px 0' }}>
                 <Spin size="large" />
-                <div style={{ marginTop: 16, color: '#475569', fontWeight: 600, fontSize: 14 }}>
+                <div style={{ marginTop: 16, color: 'var(--color-text-secondary)', fontWeight: 600, fontSize: 14 }}>
                   Gemini is analyzing endpoint telemetry, status code patterns, and latency logs...
                 </div>
               </div>
             ) : aiInsight ? (
               <div>
                 {/* Title & Description */}
-                <Card size="small" className="card-modern" style={{ marginBottom: 16, borderLeft: '4px solid #7c3aed' }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a', marginBottom: 6 }}>
+                <Card size="small" className="card-modern" style={{ marginBottom: 16, borderLeft: '4px solid var(--color-primary)' }}>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--color-text)', marginBottom: 6 }}>
                     {aiInsight.title}
                   </div>
-                  <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                     {aiInsight.description}
                   </div>
                 </Card>
@@ -1424,19 +1418,19 @@ export default function EndpointsPage() {
                 {/* Likely Causes */}
                 {aiInsight.likelyCauses && aiInsight.likelyCauses.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                       Likely Causes:
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {aiInsight.likelyCauses.map((c, i) => (
-                        <div key={i} style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 13 }}>
+                        <div key={i} style={{ background: 'var(--color-bg-tertiary)', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--color-border)', fontSize: 13 }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <span style={{ fontWeight: 700, color: '#0f172a' }}>{c.cause}</span>
+                            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{c.cause}</span>
                             <Tag color={c.confidence === 'high' ? 'error' : 'warning'} style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 700 }}>
                               {c.confidence} Confidence
                             </Tag>
                           </div>
-                          {c.evidence && <div style={{ color: '#64748b', fontSize: 12 }}>Evidence: {c.evidence}</div>}
+                          {c.evidence && <div style={{ color: 'var(--color-text-secondary)', fontSize: 12 }}>Evidence: {c.evidence}</div>}
                         </div>
                       ))}
                     </div>
@@ -1446,10 +1440,10 @@ export default function EndpointsPage() {
                 {/* Recommended Checks */}
                 {aiInsight.suggestedChecks && aiInsight.suggestedChecks.length > 0 && (
                   <div style={{ marginBottom: 16 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                       Diagnostic Checks:
                     </div>
-                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#334155', lineHeight: 1.6 }}>
+                    <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
                       {aiInsight.suggestedChecks.map((chk, i) => (
                         <li key={i} style={{ marginBottom: 4 }}>{chk}</li>
                       ))}
@@ -1461,7 +1455,7 @@ export default function EndpointsPage() {
                 {aiInsight.suggestedFix && (
                   <div style={{ marginBottom: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                         Suggested Code / Architecture Fix:
                       </span>
                       {aiInsight.suggestedFix.codeSnippet && (
@@ -1478,7 +1472,7 @@ export default function EndpointsPage() {
                       )}
                     </div>
                     {aiInsight.suggestedFix.summary && (
-                      <div style={{ fontSize: 13, color: '#475569', marginBottom: 10 }}>
+                      <div style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
                         {aiInsight.suggestedFix.summary}
                       </div>
                     )}

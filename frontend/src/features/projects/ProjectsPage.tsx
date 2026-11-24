@@ -16,6 +16,8 @@ import { EmptyState }  from '@/components/common/EmptyState';
 import { ApiImportModal } from '@/components/common/ApiImportModal';
 import { projectsService } from '@/services/endpoints/projects';
 import { fromNow, formatDate } from '@/utils';
+import { useAppSelector } from '@/app/hooks';
+import { useTheme } from '@/hooks/useTheme';
 import type { Project } from '@/types';
 
 const { Text } = Typography;
@@ -38,6 +40,7 @@ const HEALTH_COLOR = (s: number) => (s >= 95 ? '#10b981' : s >= 80 ? '#f59e0b' :
 export default function ProjectsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDark } = useTheme();
 
   // Tab state: support URL query param ?tab=history or active
   const searchParams = new URLSearchParams(location.search);
@@ -136,6 +139,7 @@ export default function ProjectsPage() {
         environment: values.environment || 'production',
         status: 'active',
         tags: values.tags || [],
+        bearerToken: values.bearerToken?.trim() || undefined,
       });
 
       setActiveProjects(prev => [created, ...prev]);
@@ -194,7 +198,7 @@ export default function ProjectsPage() {
       width: 240,
       render: (_, r) => (
         <div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{r.name}</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--color-text)' }}>{r.name}</div>
           {r.description && (
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2, maxWidth: 280, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
               {r.description}
@@ -254,7 +258,7 @@ export default function ProjectsPage() {
       width: 110,
       render: (count: number) => (
         <Space size={6}>
-          <ApiOutlined style={{ color: '#4f46e5' }} />
+          <ApiOutlined style={{ color: 'var(--color-text-secondary)' }} />
           <span style={{ fontWeight: 700 }}>{count ?? 0}</span>
         </Space>
       ),
@@ -265,7 +269,7 @@ export default function ProjectsPage() {
       key: 'createdAt',
       width: 140,
       render: (d: string) => (
-        <span style={{ fontSize: 12, color: '#64748b' }}>{d ? formatDate(d) : 'N/A'}</span>
+        <span style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>{d ? formatDate(d) : 'N/A'}</span>
       ),
     },
     {
@@ -358,27 +362,57 @@ export default function ProjectsPage() {
           {
             key: 'active',
             label: (
-              <span style={{ fontSize: 14, fontWeight: 700 }}>
-                <AppstoreOutlined style={{ marginRight: 6 }} />
-                Active Projects{' '}
-                <Badge
-                  count={activeProjects.length}
-                  style={{ backgroundColor: '#4f46e5', marginLeft: 4 }}
-                />
+              <span style={{ fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <AppstoreOutlined />
+                Active Projects
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 22,
+                    height: 20,
+                    padding: '0 6px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    backgroundColor: isDark ? '#27272a' : '#e4e4e7',
+                    color: isDark ? '#f4f4f5' : '#18181b',
+                    border: `1px solid ${isDark ? '#3f3f46' : '#d4d4d8'}`,
+                    lineHeight: 1,
+                  }}
+                >
+                  {activeProjects.length}
+                </span>
               </span>
             ),
           },
           {
             key: 'history',
             label: (
-              <span style={{ fontSize: 14, fontWeight: 700 }}>
-                <HistoryOutlined style={{ marginRight: 6 }} />
-                Project History{' '}
+              <span style={{ fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <HistoryOutlined />
+                Project History
                 {historyProjects.length > 0 && (
-                  <Badge
-                    count={historyProjects.length}
-                    style={{ backgroundColor: '#64748b', marginLeft: 4 }}
-                  />
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: 22,
+                      height: 20,
+                      padding: '0 6px',
+                      borderRadius: 10,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      backgroundColor: isDark ? '#27272a' : '#e4e4e7',
+                      color: isDark ? '#a1a1aa' : '#52525b',
+                      border: `1px solid ${isDark ? '#3f3f46' : '#d4d4d8'}`,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {historyProjects.length}
+                  </span>
                 )}
               </span>
             ),
@@ -428,7 +462,7 @@ export default function ProjectsPage() {
           {isLoadingActive ? (
             <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <Spin size="large" />
-              <div style={{ marginTop: 14, color: '#64748b', fontWeight: 500 }}>Loading active projects...</div>
+              <div style={{ marginTop: 14, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Loading active projects...</div>
             </div>
           ) : activeProjects.length === 0 ? (
             <EmptyState
@@ -466,14 +500,14 @@ export default function ProjectsPage() {
                     {/* Header */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                       <div>
-                        <span style={{ fontWeight: 800, fontSize: 16, color: '#0f172a', letterSpacing: '-0.01em' }}>
+                        <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--color-text)', letterSpacing: '-0.01em' }}>
                           {project.name}
                         </span>
                         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Tag color={ENV_COLORS[project.environment]} style={{ fontSize: 11, fontWeight: 700, borderRadius: 6 }}>
                             {project.environment.toUpperCase()}
                           </Tag>
-                          <Badge status={STATUS_COLORS[project.status] as any} text={<span style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>{project.status}</span>} />
+                          <Badge status={STATUS_COLORS[project.status] as any} text={<span style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text-secondary)' }}>{project.status}</span>} />
                         </div>
                       </div>
 
@@ -496,7 +530,7 @@ export default function ProjectsPage() {
 
                     {/* Description */}
                     <p style={{
-                      color: '#64748b',
+                      color: 'var(--color-text-secondary)',
                       fontSize: 13,
                       flex: 1,
                       margin: '6px 0 16px',
@@ -516,16 +550,16 @@ export default function ProjectsPage() {
                         alignItems: 'center',
                         gap: 8,
                         fontSize: 12,
-                        color: '#475569',
                         marginBottom: 16,
-                        background: '#f8fafc',
+                        background: 'var(--color-bg-tertiary)',
                         padding: '8px 12px',
                         borderRadius: 8,
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text)',
                         cursor: 'default',
                       }}>
-                        <GlobalOutlined style={{ color: '#4f46e5', flexShrink: 0 }} />
-                        <span style={{ fontFamily: 'JetBrains Mono, monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                        <GlobalOutlined style={{ color: 'var(--color-text-secondary)', flexShrink: 0 }} />
+                        <span style={{ fontFamily: 'var(--font-mono, monospace)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
                           {project.baseUrl}
                         </span>
                       </div>
@@ -534,13 +568,13 @@ export default function ProjectsPage() {
                     {/* Metrics Row */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <ApiOutlined style={{ color: '#4f46e5' }} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                        <ApiOutlined style={{ color: 'var(--color-text-secondary)' }} />
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-text)' }}>
                           {project.endpointCount} {project.endpointCount === 1 ? 'endpoint' : 'endpoints'}
                         </span>
                       </div>
                       <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 11, color: '#64748b' }}>Health Score: </span>
+                        <span style={{ fontSize: 11, color: 'var(--color-text-secondary)' }}>Health Score: </span>
                         <span style={{ fontWeight: 800, color: HEALTH_COLOR(project.healthScore || 100), fontSize: 13 }}>
                           {project.healthScore || 100}%
                         </span>
@@ -556,12 +590,12 @@ export default function ProjectsPage() {
                     />
 
                     {/* Footer */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: '#94a3b8', paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--color-text-tertiary)', paddingTop: 8, borderTop: '1px solid var(--color-border)' }}>
                       <span>Created {fromNow(project.createdAt)}</span>
                       <span
                         style={{
                           fontSize: 12,
-                          color: '#4f46e5',
+                          color: 'var(--color-text)',
                           fontWeight: 700,
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -624,7 +658,7 @@ export default function ProjectsPage() {
           {isLoadingHistory ? (
             <div style={{ textAlign: 'center', padding: '80px 0' }}>
               <Spin size="large" />
-              <div style={{ marginTop: 14, color: '#64748b', fontWeight: 500 }}>Loading project history...</div>
+              <div style={{ marginTop: 14, color: 'var(--color-text-secondary)', fontWeight: 500 }}>Loading project history...</div>
             </div>
           ) : historyProjects.length === 0 ? (
             <EmptyState
@@ -653,7 +687,7 @@ export default function ProjectsPage() {
       {/* ── Modal: Create New Project ─────────────────────────────────────── */}
       <Modal
         title={
-          <div style={{ fontSize: 17, fontWeight: 800, color: '#0f172a' }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--color-text)' }}>
             Create New Microservice Project
           </div>
         }
@@ -687,14 +721,14 @@ export default function ProjectsPage() {
           style={{ marginTop: 12, marginBottom: 16, borderRadius: 10 }}
           message={
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-              <span style={{ fontSize: 13, color: '#1e293b' }}>
+              <span style={{ fontSize: 13, color: 'var(--color-text)' }}>
                 Have an OpenAPI spec, Swagger URL, or Postman collection?
               </span>
               <Button
                 size="small"
                 type="link"
                 icon={<ImportOutlined />}
-                style={{ padding: 0, fontWeight: 700, color: '#4f46e5' }}
+                style={{ padding: 0, fontWeight: 700, color: 'var(--color-text)' }}
                 onClick={() => {
                   setIsModalOpen(false);
                   setIsImportModalOpen(true);
@@ -728,11 +762,11 @@ export default function ProjectsPage() {
               { type: 'url', message: 'Must be a valid URL starting with http:// or https://' },
             ]}
           >
-            <Input placeholder="https://my-deployed-app.vercel.app, https://api.example.com or http://localhost:8000" />
+            <Input placeholder="https://api.example.com" />
           </Form.Item>
 
           <Form.Item name="description" label="Description">
-            <Input.TextArea rows={3} placeholder="Brief summary of the services and routes in this project" />
+            <Input.TextArea rows={3} placeholder="Brief summary of the services and routes in this microservice project" />
           </Form.Item>
 
           <Form.Item name="environment" label="Environment" rules={[{ required: true }]}>
@@ -745,8 +779,16 @@ export default function ProjectsPage() {
             />
           </Form.Item>
 
+          <Form.Item
+            name="bearerToken"
+            label="Default Bearer Token / API Secret (Optional)"
+            tooltip="If configured, this token will be automatically passed in the Authorization header for all endpoints in this project"
+          >
+            <Input.Password placeholder="e.g. eyJhbGciOi..." />
+          </Form.Item>
+
           <Form.Item name="tags" label="Tags">
-            <Select mode="tags" placeholder="e.g. backend, core, v1" />
+            <Select mode="tags" placeholder="e.g. orders, checkout" />
           </Form.Item>
         </Form>
       </Modal>

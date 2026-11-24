@@ -8,11 +8,13 @@ import {
   CopyOutlined, DeleteOutlined, PlusOutlined,
   EyeOutlined, EyeInvisibleOutlined, SoundOutlined,
   CheckCircleOutlined, ExclamationCircleOutlined, AlertOutlined,
-  RobotOutlined,
+  RobotOutlined, BgColorsOutlined, SunOutlined, MoonOutlined, DesktopOutlined,
 } from '@ant-design/icons';
 import { PageHeader } from '@/components/common/PageHeader';
 import { useAppSelector, useAppDispatch } from '@/app/hooks';
 import { setPreferences } from '@/features/notifications/notificationsSlice';
+import { useTheme } from '@/hooks/useTheme';
+import { ThemeSelector } from '@/components/theme/ThemeSelector';
 import { playNotificationSound } from '@/utils/audio';
 import { formatDate } from '@/utils';
 import type { ColumnsType } from 'antd/es/table';
@@ -75,7 +77,7 @@ const ProfileTab: React.FC = () => {
           {user?.name?.charAt(0).toUpperCase() ?? 'U'}
         </Avatar>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text)' }}>
             {user?.name ?? 'User'}
           </div>
           <div style={{ fontSize: 13, color: '#64748b' }}>{user?.email}</div>
@@ -161,7 +163,7 @@ const NotificationsTab: React.FC = () => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>Enable Sound Alerts</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>Enable Sound Alerts</div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
               Master switch to play audible tones when critical incidents, degradations, or recoveries occur.
             </div>
@@ -174,7 +176,7 @@ const NotificationsTab: React.FC = () => {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
           <div>
-            <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>Critical Alert Tone (Unhealthy / Unavailable APIs)</div>
+            <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--color-text)' }}>Critical Alert Tone (Unhealthy / Unavailable APIs)</div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
               Urgent dual-tone alarm triggered on endpoint failures, 5xx outages, and downtime.
             </div>
@@ -188,7 +190,7 @@ const NotificationsTab: React.FC = () => {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
           <div>
-            <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>Warning Chime (Degraded Performance / Latency Spikes)</div>
+            <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--color-text)' }}>Warning Chime (Degraded Performance / Latency Spikes)</div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
               Gentle chime when an endpoint exceeds configured latency threshold or experiences degradation.
             </div>
@@ -202,7 +204,7 @@ const NotificationsTab: React.FC = () => {
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
           <div>
-            <div style={{ fontWeight: 500, fontSize: 14, color: '#0f172a' }}>Recovery Tone (API Returned to Healthy)</div>
+            <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--color-text)' }}>Recovery Tone (API Returned to Healthy)</div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
               Ascending harmonic chord played when a degraded or unhealthy API fully recovers.
             </div>
@@ -216,7 +218,7 @@ const NotificationsTab: React.FC = () => {
 
         {/* Audio Test Controls */}
         <div style={{ marginTop: 20, padding: 14, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 10 }}>
             Test Synthesizer Sounds (Web Audio API)
           </div>
           <Space wrap>
@@ -260,7 +262,7 @@ const NotificationsTab: React.FC = () => {
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14, color: '#0f172a' }}>Display Floating Toast Notifications</div>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--color-text)' }}>Display Floating Toast Notifications</div>
             <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
               Show Ant Design alert notifications on the top-right screen when API health transitions occur.
             </div>
@@ -540,6 +542,83 @@ const ApiKeysTab: React.FC = () => {
 };
 
 // ---------------------------------------------------------------------------
+// Appearance & Theme Tab
+// ---------------------------------------------------------------------------
+const AppearanceTab: React.FC = () => {
+  const { themeMode, resolvedTheme, setThemeMode } = useTheme();
+
+  return (
+    <Card className="card-modern" style={{ maxWidth: 720 }}>
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+        <div style={{ maxWidth: 440 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Theme & Visual Appearance</h3>
+          <p style={{ fontSize: 13, color: 'var(--color-text-secondary)', marginTop: 4, margin: 0 }}>
+            Choose your interface preference. Select Light Mode, Dark Mode, or automatically synchronize with your operating system.
+          </p>
+        </div>
+        <ThemeSelector variant="pill" />
+      </div>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+          <Card
+            hoverable
+            onClick={() => setThemeMode('light')}
+            style={{
+              textAlign: 'center',
+              borderRadius: 14,
+              border: themeMode === 'light' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+              cursor: 'pointer',
+              boxShadow: themeMode === 'light' ? '0 2px 10px rgba(0, 0, 0, 0.12)' : undefined,
+            }}
+          >
+            <SunOutlined style={{ fontSize: 32, color: '#f59e0b', marginBottom: 12 }} />
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Light Mode</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>Clean airy canvas with sharp contrast</div>
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={8}>
+          <Card
+            hoverable
+            onClick={() => setThemeMode('dark')}
+            style={{
+              textAlign: 'center',
+              borderRadius: 14,
+              border: themeMode === 'dark' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+              cursor: 'pointer',
+              boxShadow: themeMode === 'dark' ? '0 2px 10px rgba(0, 0, 0, 0.4)' : undefined,
+            }}
+          >
+            <MoonOutlined style={{ fontSize: 32, color: '#f4f4f5', marginBottom: 12 }} />
+            <div style={{ fontWeight: 700, fontSize: 14 }}>Dark Mode</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>Low glare developer observability</div>
+          </Card>
+        </Col>
+
+        <Col xs={24} sm={8}>
+          <Card
+            hoverable
+            onClick={() => setThemeMode('system')}
+            style={{
+              textAlign: 'center',
+              borderRadius: 14,
+              border: themeMode === 'system' ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+              cursor: 'pointer',
+              boxShadow: themeMode === 'system' ? '0 2px 10px rgba(0, 0, 0, 0.2)' : undefined,
+            }}
+          >
+            <DesktopOutlined style={{ fontSize: 32, color: 'var(--color-text-secondary)', marginBottom: 12 }} />
+            <div style={{ fontWeight: 700, fontSize: 14 }}>System Default</div>
+            <div style={{ fontSize: 12, color: 'var(--color-text-secondary)', marginTop: 4 }}>Follows OS ({resolvedTheme})</div>
+          </Card>
+        </Col>
+      </Row>
+    </Card>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // SettingsPage
 // ---------------------------------------------------------------------------
 export default function SettingsPage() {
@@ -547,7 +626,7 @@ export default function SettingsPage() {
     <div>
       <PageHeader
         title="Settings & System Preferences"
-        subtitle="Manage your developer account, notifications, audio telemetry, and API access keys"
+        subtitle="Manage your developer account, theme modes, notifications, audio telemetry, and API access keys"
         breadcrumbs={[{ label: 'Settings' }]}
       />
 
@@ -562,6 +641,15 @@ export default function SettingsPage() {
               </span>
             ),
             children: <ProfileTab />,
+          },
+          {
+            key: 'appearance',
+            label: (
+              <span>
+                <BgColorsOutlined /> Appearance & Theme
+              </span>
+            ),
+            children: <AppearanceTab />,
           },
           {
             key: 'notifications',
